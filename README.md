@@ -44,6 +44,8 @@ O sistema utiliza autenticação com a API do Gmail via Google.
 O projeto segue uma arquitetura em camadas:
 
 <img width="946" height="377" alt="image" src="https://github.com/user-attachments/assets/2d182115-9b50-468f-ba96-f4ca9b304cae" />
+<img width="953" height="174" alt="image" src="https://github.com/user-attachments/assets/061a216e-e909-4189-bb9b-4de77ea726bc" />
+
 
 ---
 
