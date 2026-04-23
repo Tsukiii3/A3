@@ -31,7 +31,6 @@ public class UrlController {
         if (url == null) {
             return ResponseEntity.notFound().build();
         }
-
         return ResponseEntity.ok(url);
     }
     @PutMapping("/{id}")
