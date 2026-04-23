@@ -39,6 +39,7 @@ tokens/
 # Configs locais (não subir)
 application-local.properties
 application-dev.properties
+application.properties
 
 # Arquivos sensíveis específicos
 credentials.json
