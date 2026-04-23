@@ -10,7 +10,7 @@ Sistema de detecção de phishing desenvolvido com **Java + Spring Boot**, utili
 
 ##  Objetivo
 
-Detectar automaticamente emails suspeitos e classificá-los em:
+Detectar automaticamente emails e classificá-los em:
 
 * SEGURO
 * SUSPEITO
