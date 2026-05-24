@@ -1,200 +1,315 @@
-# PhishGuard — Email Phishing Detection API
+# PhishGuard API
 
-Sistema de detecção de phishing desenvolvido com **Java + Spring Boot**, utilizando:
+API REST desenvolvida com Spring Boot para análise inteligente de emails com foco em detecção de phishing, fraudes e links maliciosos.
 
-*  Heurística (regras técnicas)
-* Google Safe Browsing
-* Inteligência Artificial (camada final de decisão)
+A aplicação funciona como um firewall inteligente de emails, utilizando:
 
----
-
-##  Objetivo
-
-Detectar automaticamente emails e classificá-los em:
-
-* SEGURO
-* SUSPEITO
-*  FRAUDE
-
-Retornando também:
-
-* Score de risco (0–100)
-* Motivos da classificação
+- Heurísticas próprias de detecção
+- Integração com Safe Browsing
+- Inteligência Artificial via Groq
+- Bases OpenPhish e URLhaus
+- Login com Gmail OAuth2
+- Segurança com JWT
+- Banco de dados para persistência de usuários e URLs maliciosas
 
 ---
 
-##  Autenticação
+# Funcionalidades
 
-O sistema utiliza autenticação com a API do Gmail via Google.
+## Classificação Inteligente de Emails
 
-* A autenticação é feita via **OAuth2 do Google**
-* O usuário precisa autorizar o acesso à sua conta Gmail
-* O sistema utiliza um arquivo de credenciais (`credentials.json`)
+Os emails são classificados em:
 
-* O próprio Google já gerencia:
-
-  * autenticação
-  * autorização
-  * segurança da conta
+| Classificação | Descrição |
+|---|---|
+| Seguro | Email legítimo |
+| Suspeito | Possíveis sinais de phishing |
+| Fraude | Alto risco ou confirmação maliciosa |
 
 ---
 
-## Arquitetura do Sistema
+## Heurística Base
 
-O projeto segue uma arquitetura em camadas:
+A API realiza análises como:
 
-<img width="946" height="377" alt="image" src="https://github.com/user-attachments/assets/2d182115-9b50-468f-ba96-f4ca9b304cae" />
-<img width="953" height="174" alt="image" src="https://github.com/user-attachments/assets/061a216e-e909-4189-bb9b-4de77ea726bc" />
-
-
----
-
-### Camadas do sistema
-
-###  Controller
-
-Responsável por expor os endpoints da API.
+- Domínio suspeito
+- Links encurtados
+- Linguagem de urgência
+- HTML suspeito
+- Spoofing de remetente
+- Divergência entre domínio e remetente
+- Palavras relacionadas a golpes
+- Links ocultos
 
 ---
 
-###  Orchestrator (Cérebro do sistema)
+## Verificação de Links
 
-Gerencia o fluxo completo de análise:
+Todos os links encontrados nos emails passam por verificações utilizando:
 
-1. Heurística
-2. Safe Browsing
-3. IA
+- Google Safe Browsing
+- Base local OpenPhish
+- Base local URLhaus
 
- Exemplo:
+---
 
-```java
-if (resultado.getScore() < 25) {
-    return resultado; // evita processamento desnecessário
-}
+## Inteligência Artificial
+
+Emails classificados inicialmente como suspeitos passam por uma segunda camada de análise utilizando IA via Groq.
+
+A IA analisa:
+
+- Engenharia social
+- Contexto da mensagem
+- Linguagem manipulativa
+- Tentativas de urgência
+- Padrões modernos de phishing
+
+---
+
+## Segurança
+
+- Login OAuth2 com Gmail
+- Autenticação JWT
+- Proteção de rotas
+- Acesso somente aos próprios emails
+- Persistência segura dos dados
+
+---
+
+# Arquitetura
+
+```text
+Usuário → Login Gmail OAuth2
+        → Recebe JWT
+        → Requisição autenticada
+        → Captura emails
+        → Heurística analisa
+        → Verificação de links:
+             • Safe Browsing
+             • OpenPhish
+             • URLhaus
+        → IA Groq analisa emails suspeitos
+        → Classificação final:
+             • Seguro
+             • Suspeito
+             • Fraude
 ```
 
 ---
 
-###  Services
+# Tecnologias Utilizadas
 
-#### PhishingService
+## Backend
 
-Responsável pela análise heurística:
+- Java
+- Spring Boot
+- Spring Security
+- JWT
+- OAuth2
 
-* Domínio do remetente
-* Links
-* Palavras suspeitas
-* Score inicial
+## Banco de Dados
 
----
+- PostgreSQL / MySQL
 
-####  SafeBrowsingService
+## APIs e Integrações
 
-Integração com API do Google:
-
-* Detecta URLs maliciosas
-* Evita falsos positivos com whitelist
-
----
-
-#### AiAnalyseService
-
-Responsável pela análise com IA:
-
-* Utilizado apenas em casos críticos
-* Atua como decisão final
+- Gmail API
+- Safe Browsing API
+- Groq API
+- OpenPhish
+- URLhaus
 
 ---
 
-###  Repository (Camada de Dados)
+# Autenticação
 
-Mesmo que não esteja sendo amplamente utilizado ainda, essa camada é importante porque:
+A autenticação é feita utilizando OAuth2 com Gmail.
 
-Permite futura integração com banco de dados
+Após o login:
 
-Possíveis usos futuros:
-
-* Armazenar links analisados
-* Histórico de phishing
-* 
----
-
-##  Lógica de Detecção
-
-### Heurística
-
-Analisa:
-
-* Remetente (email pessoal ou domínio desconhecido)
-* Links externos
-* Palavras-chave suspeitas:
-* 
-  * urgente
-  * bloqueio
-  * login
-  * verify
+1. O usuário autentica com Google
+2. A API gera um token JWT
+3. O JWT é utilizado nas próximas requisições
 
 ---
 
-###  Safe Browsing
-
-Só é acionado quando necessário
-
-##  Extração de Links
-
-detectar URLs dentro do email:
-
-##  Endpoint
+## Header de Autorização
 
 ```http
-GET /api/emails/analisar
+Authorization: Bearer SEU_TOKEN_JWT
 ```
 
 ---
 
-## Exemplo de Resposta
+# Endpoints
+
+## Analisar Emails
+
+### Endpoint
+
+```http
+GET /api/analisar
+```
+
+### Descrição
+
+Captura e analisa os emails do usuário autenticado.
+
+---
+
+### Exemplo de Resposta
+
+```json
+[
+  {
+    "remetente": "suporte@paypal-alerta.com",
+    "assunto": "Sua conta será bloqueada",
+    "classificacao": "FRAUDE",
+    "motivos": [
+      "Domínio suspeito",
+      "Link malicioso detectado",
+      "Linguagem de urgência"
+    ]
+  },
+  {
+    "remetente": "github.com",
+    "assunto": "Novo login detectado",
+    "classificacao": "SEGURO"
+  }
+]
+```
+
+---
+
+## Atualizar Base de URLs
+
+### Endpoint
+
+```http
+POST /urlhaus
+```
+
+### Descrição
+
+Atualiza as bases OpenPhish e URLhaus e salva os dados no banco.
+
+---
+
+### Exemplo de Resposta
 
 ```json
 {
-  "from": "Google <no-reply@accounts.google.com>",
-  "subject": "Alerta de segurança",
-  "classificacao": "SEGURO",
-  "score": 10,
-  "motivos": [
-    "Links externos desconhecidos"
-  ]
+  "status": "success",
+  "urlsSalvas": 14520
 }
 ```
 
 ---
 
-##  Demonstração
+# Estrutura do Banco de Dados
 
-###  Requisição (Postman)
+## Tabela: usuarios
 
-<img width="1364" height="841" alt="image" src="https://github.com/user-attachments/assets/0e020f17-ab20-4e14-9035-d78adad0ba19" />
-<img width="1333" height="482" alt="image" src="https://github.com/user-attachments/assets/fe509953-3cfd-464f-8675-d586000039c9" />
-
-
-
----
-
-
-###  Estrutura do Projeto
-
-<img width="366" height="838" alt="image" src="https://github.com/user-attachments/assets/f2b25845-cdb4-4786-8d75-a74cc516c312" />
-<img width="356" height="490" alt="image" src="https://github.com/user-attachments/assets/65387b01-0c17-40f9-bf2c-48ed44fa964c" />
-
+| Campo | Tipo |
+|---|---|
+| id | Long |
+| nome | String |
+| email | String |
+| google_id | String |
+| created_at | Timestamp |
 
 ---
 
-## Tecnologias
+## Tabela: url_phishing
 
-* Java 21
-* Spring Boot
-* Maven
-* Google Safe Browsing API
-* Gmail API (OAuth2)
+| Campo | Tipo |
+|---|---|
+| id | Long |
+| url | String |
+| dominio | String |
+| source | String |
+| created_at | Timestamp |
 
+---
 
+# Sistema de Feed de URLs
 
+A aplicação utiliza duas fontes externas para alimentar automaticamente a base de URLs maliciosas:
+
+## OpenPhish
+
+O sistema consome automaticamente o feed:
+
+```text
+https://openphish.com/feed.txt
+```
+
+As URLs são:
+
+- Baixadas automaticamente
+- Filtradas
+- Normalizadas
+- Persistidas no banco
+- Validadas contra duplicações
+
+---
+
+## URLhaus
+
+O sistema também realiza download do feed CSV compactado:
+
+```text
+https://urlhaus.abuse.ch/downloads/csv_recent/
+```
+
+Durante o processamento:
+
+- O ZIP é baixado automaticamente
+- O CSV é descompactado
+- Apenas URLs online são salvas
+- URLs duplicadas são ignoradas
+- O domínio é extraído automaticamente
+- O tipo de ameaça é armazenado
+
+---
+
+# Fluxo de Análise
+
+```text
+1. Usuário realiza login Google
+2. JWT é gerado
+3. Usuário chama /api/analisar
+4. API captura emails Gmail
+5. Links são extraídos
+6. Verificação:
+   • OpenPhish
+   • URLhaus
+   • Safe Browsing
+7. Heurística realiza análise
+8. IA Groq analisa emails suspeitos
+9. Resultado final retornado
+```
+
+---
+
+# Segurança Implementada
+
+- JWT Authentication
+- OAuth2 Google Login
+- Proteção de endpoints
+- Isolamento de dados por usuário
+- Sanitização de URLs
+- Verificação de ameaças externas
+
+---
+
+# Objetivo do Projeto
+
+A PhishGuard API foi criada para fornecer uma camada inteligente de proteção contra phishing, engenharia social e links maliciosos, automatizando análises e reduzindo riscos de fraudes digitais.
+
+---
+
+# Autor
+
+Desenvolvido por Rafael Farias.
