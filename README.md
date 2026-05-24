@@ -1,16 +1,16 @@
-# 🛡️ PhishGuard — Email Phishing Detection API
+# PhishGuard — Email Phishing Detection API
 
-Sistema de detecção de phishing desenvolvido com **Java + Spring Boot**, utilizando uma abordagem híbrida:
+Sistema de detecção de phishing desenvolvido com **Java + Spring Boot**, utilizando:
 
-* 🔍 Heurística (regras técnicas)
-* 🌐 Google Safe Browsing
-* 🤖 Inteligência Artificial (camada final de decisão)
+*  Heurística (regras técnicas)
+* Google Safe Browsing
+* Inteligência Artificial (camada final de decisão)
 
 ---
 
 ##  Objetivo
 
-Detectar automaticamente emails suspeitos e classificá-los em:
+Detectar automaticamente emails e classificá-los em:
 
 * SEGURO
 * SUSPEITO
@@ -39,7 +39,7 @@ O sistema utiliza autenticação com a API do Gmail via Google.
 
 ---
 
-## 🏗️ Arquitetura do Sistema
+## Arquitetura do Sistema
 
 O projeto segue uma arquitetura em camadas:
 
@@ -65,7 +65,7 @@ Gerencia o fluxo completo de análise:
 2. Safe Browsing
 3. IA
 
-📌 Exemplo:
+ Exemplo:
 
 ```java
 if (resultado.getScore() < 25) {
@@ -75,9 +75,9 @@ if (resultado.getScore() < 25) {
 
 ---
 
-### 🔧 Services
+###  Services
 
-#### 🔍 PhishingService
+#### PhishingService
 
 Responsável pela análise heurística:
 
@@ -88,7 +88,7 @@ Responsável pela análise heurística:
 
 ---
 
-#### 🌐 SafeBrowsingService
+####  SafeBrowsingService
 
 Integração com API do Google:
 
@@ -97,7 +97,7 @@ Integração com API do Google:
 
 ---
 
-#### 🤖 AiAnalyseService
+#### AiAnalyseService
 
 Responsável pela análise com IA:
 
@@ -106,7 +106,7 @@ Responsável pela análise com IA:
 
 ---
 
-### 📁 Repository (Camada de Dados)
+###  Repository (Camada de Dados)
 
 Mesmo que não esteja sendo amplamente utilizado ainda, essa camada é importante porque:
 
@@ -119,9 +119,9 @@ Possíveis usos futuros:
 * 
 ---
 
-## 🧠 Lógica de Detecção
+##  Lógica de Detecção
 
-### 🔹 1. Heurística
+### Heurística
 
 Analisa:
 
@@ -136,15 +136,15 @@ Analisa:
 
 ---
 
-### 🔹 2. Safe Browsing
+###  Safe Browsing
 
 Só é acionado quando necessário
 
-## 🔗 Extração de Links
+##  Extração de Links
 
 detectar URLs dentro do email:
 
-## 📡 Endpoint
+##  Endpoint
 
 ```http
 GET /api/emails/analisar
@@ -152,7 +152,7 @@ GET /api/emails/analisar
 
 ---
 
-## 📊 Exemplo de Resposta
+## Exemplo de Resposta
 
 ```json
 {
@@ -168,9 +168,9 @@ GET /api/emails/analisar
 
 ---
 
-## 📸 Demonstração
+##  Demonstração
 
-### 🔹 Requisição (Postman)
+###  Requisição (Postman)
 
 <img width="1364" height="841" alt="image" src="https://github.com/user-attachments/assets/0e020f17-ab20-4e14-9035-d78adad0ba19" />
 <img width="1333" height="482" alt="image" src="https://github.com/user-attachments/assets/fe509953-3cfd-464f-8675-d586000039c9" />
@@ -180,7 +180,7 @@ GET /api/emails/analisar
 ---
 
 
-### 🔹 Estrutura do Projeto
+###  Estrutura do Projeto
 
 <img width="366" height="838" alt="image" src="https://github.com/user-attachments/assets/f2b25845-cdb4-4786-8d75-a74cc516c312" />
 <img width="356" height="490" alt="image" src="https://github.com/user-attachments/assets/65387b01-0c17-40f9-bf2c-48ed44fa964c" />
@@ -188,7 +188,7 @@ GET /api/emails/analisar
 
 ---
 
-## ⚙️ Tecnologias
+## Tecnologias
 
 * Java 21
 * Spring Boot
