@@ -1,9 +1,7 @@
 package com.phishguard.demo.dto;
 
-
 public class GmailDTO {
-
-   private String from;
+    private String from;
     private String subject;
     private String body;
 
@@ -12,7 +10,6 @@ public class GmailDTO {
         this.subject = subject;
         this.body = body;
     }
-
     public String getFrom() { return from; }
     public String getSubject() { return subject; }
     public String getBody() { return body; }

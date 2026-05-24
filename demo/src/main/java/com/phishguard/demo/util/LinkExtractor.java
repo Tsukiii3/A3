@@ -4,25 +4,35 @@ import java.util.*;
 import java.util.regex.*;
 
 public class LinkExtractor {
-    public static List<String> extrairLinks(String texto) {
-        Set<String> links = new HashSet<>();
-        if (texto == null || texto.isEmpty()) return new ArrayList<>();
 
-        // Captura protocolos e domínios comuns (www. ou .com / .com.br)
-        String urlPatternString = "(?:https?://|www\\.)[\\w\\d.#@/?=!%&-]+|(?<=\\s|^)[\\w\\d-]+\\.(?:com|com\\.br|net|org|gov|edu)(?=\\s|$)";
-        Pattern pattern = Pattern.compile(urlPatternString, Pattern.CASE_INSENSITIVE);
-        Matcher matcher = pattern.matcher(texto);
+    private static final Pattern URL_PATTERN = Pattern.compile(
+        "(?:https?://|www\\.)[\\w\\d.\\-#@:/?=!%&+_~]+|" +
+        "(?<![\\w@])[\\w\\d\\-]+\\.(?:com\\.br|com|net|org|gov|edu|io|co)(?:/[\\w\\d./?=&%\\-]*)?(?=[\\s\"'<>]|$)",
+        Pattern.CASE_INSENSITIVE
+    );
+
+    public static List<String> extrairLinks(String texto) {
+        if (texto == null || texto.isBlank()) return List.of();
+
+        Set<String> links = new LinkedHashSet<>(); // LinkedHashSet mantém ordem e sem duplicatas
+        Matcher matcher = URL_PATTERN.matcher(texto);
 
         while (matcher.find()) {
-            links.add(normalizar(matcher.group()));
+            String url = normalizar(matcher.group());
+            if (url != null && !url.isBlank()) {
+                links.add(url);
+            }
         }
 
         return new ArrayList<>(links);
     }
+
     private static String normalizar(String url) {
-        if (url == null) return "";
-        url = url.trim().replaceAll("[),.;!]+$", "");
-        if (url.toLowerCase().startsWith("www.")) url = "http://" + url;
-        return url;
+        if (url == null) return null;
+        url = url.trim().replaceAll("[),.;!>\"']+$", ""); // remove pontuação no final
+        if (url.toLowerCase().startsWith("www.")) {
+            url = "http://" + url;
+        }
+        return url.isBlank() ? null : url;
     }
 }

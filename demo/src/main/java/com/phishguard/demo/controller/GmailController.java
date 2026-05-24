@@ -1,49 +1,68 @@
 package com.phishguard.demo.controller;
 
-import com.phishguard.demo.service.AiAnalyseService;
-import com.phishguard.demo.service.GmailService;
 import com.phishguard.demo.Orchestrator.PhishingOrchestrator;
-import com.phishguard.demo.dto.GmailDTO;
 import com.phishguard.demo.dto.AnalyseDTO;
+import com.phishguard.demo.dto.GmailDTO;
+import com.phishguard.demo.model.Usuario;
+import com.phishguard.demo.repository.UsuarioRepository;
+import com.phishguard.demo.service.GmailService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.*;
 
 @RestController
 @RequestMapping("/api/emails")
 public class GmailController {
 
-    private final GmailService gmailService;
+    private final GmailService         gmailService;
     private final PhishingOrchestrator orchestrator;
+    private final UsuarioRepository   usuarioRepo;
 
-    public GmailController(GmailService gmailService, PhishingOrchestrator orchestrator) {
+    public GmailController(GmailService gmailService,
+                           PhishingOrchestrator orchestrator,
+                           UsuarioRepository usuarioRepo) {
         this.gmailService = gmailService;
         this.orchestrator = orchestrator;
+        this.usuarioRepo  = usuarioRepo;
     }
 
     @GetMapping("/analisar")
-    public ResponseEntity<?> analisarEmails() {
+    public ResponseEntity<?> analisar() {
         try {
-            List<GmailDTO> emails = gmailService.buscarEmails();
-            List<Map<String, Object>> resposta = new ArrayList<>();
+            var auth = SecurityContextHolder.getContext().getAuthentication();
 
-            for (GmailDTO email : emails) {
-                // Se o orquestrador falhar para um email específico, o try/catch interno trata
-                AnalyseDTO resultado = orchestrator.analisarFluxoCompleto(email);
-
-                Map<String, Object> item = new LinkedHashMap<>(); // LinkedHashMap mantém a ordem
-                item.put("from", email.getFrom());
-                item.put("subject", email.getSubject());
-                item.put("classificacao", resultado.getClassificacao());
-                item.put("score", resultado.getScore());
-                item.put("motivos", resultado.getMotivos());
-                resposta.add(item);
+            if (auth == null || !(auth.getPrincipal() instanceof Usuario usuario)) {
+                return ResponseEntity.status(401)
+                    .body(Map.of("erro", "Não autenticado"));
             }
-            return ResponseEntity.ok(resposta);
+            List<GmailDTO> emails;
+            if (usuario.getGmailAccessToken() != null
+                    && !usuario.getGmailAccessToken().isBlank()) {
+                emails = gmailService.buscarEmails(usuario);
+            } else {
+                emails = gmailService.buscarEmails();
+            }
+
+            List<Map<String, Object>> resp = new ArrayList<>();
+            for (GmailDTO email : emails) {
+                AnalyseDTO r = orchestrator.analisarFluxoCompleto(email);
+                Map<String, Object> item = new LinkedHashMap<>();
+                item.put("from",          email.getFrom());
+                item.put("subject",       email.getSubject());
+                item.put("classificacao", r.getClassificacao());
+                item.put("score",         r.getScore());
+                item.put("motivos",       r.getMotivos());
+                resp.add(item);
+            }
+
+            return ResponseEntity.ok(resp);
+
         } catch (Exception e) {
-            // Isso vai mostrar o erro real (Flags ou 404) no console do seu VS Code/IntelliJ
-            e.printStackTrace(); 
-            return ResponseEntity.status(500).body("Erro interno no processamento: " + e.getLocalizedMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500)
+                .body(Map.of("erro", e.getMessage()));
         }
     }
 }
