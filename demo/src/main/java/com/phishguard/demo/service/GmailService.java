@@ -12,6 +12,7 @@ import com.phishguard.demo.dto.GmailDTO;
 import com.phishguard.demo.model.Usuario;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.time.LocalDateTime;
@@ -155,11 +156,19 @@ public class GmailService {
             .setApplicationName(APP_NAME).build();
     }
 
-    private GoogleClientSecrets carregarSecrets() throws Exception {
-        InputStream in = GmailService.class.getResourceAsStream(CREDS_PATH);
-        if (in == null) throw new RuntimeException("credentials.json não encontrado!");
-        return GoogleClientSecrets.load(JSON, new InputStreamReader(in));
+   private GoogleClientSecrets carregarSecrets() throws Exception {
+    // Tenta variável de ambiente primeiro (produção)
+    String credsJson = System.getenv("GOOGLE_CREDENTIALS");
+    if (credsJson != null && !credsJson.isBlank()) {
+        return GoogleClientSecrets.load(JSON,
+            new InputStreamReader(
+                new ByteArrayInputStream(credsJson.getBytes())));
     }
+    // Fallback para arquivo local (desenvolvimento)
+    InputStream in = GmailService.class.getResourceAsStream(CREDS_PATH);
+    if (in == null) throw new RuntimeException("credentials.json não encontrado!");
+    return GoogleClientSecrets.load(JSON, new InputStreamReader(in));
+}
 
     private String extractBody(MessagePart payload) {
         try {
