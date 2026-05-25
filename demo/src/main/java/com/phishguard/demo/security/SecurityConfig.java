@@ -7,10 +7,10 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
 import java.util.List;
 
 @Configuration
@@ -28,23 +28,28 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfig()))
             .sessionManagement(s -> s.sessionCreationPolicy(
                 SessionCreationPolicy.STATELESS))
+            .headers(headers -> headers
+                .addHeaderWriter(new StaticHeadersWriter(
+                    "Cross-Origin-Opener-Policy", "same-origin-allow-popups"
+                ))
+            )
             .authorizeHttpRequests(auth -> auth
-            .requestMatchers(
-                "/auth/**",
-                "/swagger-ui/**",
-                "/v3/api-docs/**",
-                // ← adiciona essas linhas
-                "/",
-                "/*.html",
-                "/*.css",
-                "/*.js",
-                "/assets/**"
-            ).permitAll()
-            .anyRequest().authenticated()
-        )
+                .requestMatchers(
+                    "/auth/**",
+                    "/swagger-ui/**",
+                    "/v3/api-docs/**",
+                    "/",
+                    "/index.html",
+                    "/login.html",
+                    "/callback.html",
+                    "/*.css",
+                    "/*.js",
+                    "/assets/**"
+                ).permitAll()
+                .anyRequest().authenticated()
+            )
             .addFilterBefore(jwtFilter,
                 UsernamePasswordAuthenticationFilter.class);
-
         return http.build();
     }
     @Bean
