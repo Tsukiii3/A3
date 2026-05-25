@@ -23,13 +23,18 @@ public class OpenPhishLoader implements ApplicationRunner {
         this.urlHausLoader = urlHausLoader;
     }
     @Override
-    public void run(ApplicationArguments args) {
-        carregarOpenPhish();
-        urlHausLoader.carregar();
-
-        System.out.println(">>> Carga total finalizada: "
-            + urlRepo.count() + " URLs no banco.");
+public void run(ApplicationArguments args) {
+    long total = urlRepo.count();
+    if (total == 0) {
+        // Roda em background pra não travar a inicialização
+        new Thread(() -> {
+            System.out.println(">>> PhishGuard: carregando base em background...");
+            carregarOpenPhish();
+            urlHausLoader.carregar();
+            System.out.println(">>> PhishGuard: base pronta com " + urlRepo.count() + " URLs.");
+        }, "phish-loader").start();
     }
+}
    public int carregarOpenPhish() {
     try {
         RestTemplate rest = new RestTemplate();
