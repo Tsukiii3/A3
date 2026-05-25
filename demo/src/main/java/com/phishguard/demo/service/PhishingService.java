@@ -39,6 +39,7 @@ public class PhishingService {
 
     private static final Set<String> TRUSTED_SENDING_DOMAINS = Set.of(
         "mail.linkedin.com", "e.linkedin.com", "emlnk.com",
+        "linkedin.com", "messages-noreply.linkedin.com",   // ← adicionado
         "mail.google.com", "accounts.google.com",
         "mail.microsoft.com", "mail.office365.com",
         "mail.spotify.com", "email.spotify.com",
@@ -58,10 +59,17 @@ public class PhishingService {
         "yahoo.com", "ymail.com", "protonmail.com"
     );
 
+    // Domínios de infraestrutura ignorados na análise de links
+    private static final Set<String> LINK_IGNORE_DOMAINS = Set.of(
+        "w3.org", "xmlsoap.org", "schemas.microsoft.com",
+        "googleapis.com", "gstatic.com", "googleusercontent.com",
+        "mimecast.com", "purl.org", "dublincore.org", "ogp.me"
+    );
+
     public AnalyseDTO analisar(GmailDTO email) {
-        String from     = safe(email.getFrom()).toLowerCase();
-        String body     = safe(email.getBody()).toLowerCase();
-        String subject  = safe(email.getSubject()).toLowerCase();
+        String from    = safe(email.getFrom()).toLowerCase();
+        String body    = safe(email.getBody()).toLowerCase();
+        String subject = safe(email.getSubject()).toLowerCase();
 
         String domain     = extrairDominioEmail(from);
         String senderRoot = getRootDomain(domain);
@@ -83,6 +91,7 @@ public class PhishingService {
         score = Math.max(0, Math.min(score, 100));
         return new AnalyseDTO(classificar(score), score, new ArrayList<>(motivos));
     }
+
     private int reputationScore(String fullDomain, String senderRoot, Set<String> motivos) {
         if (TRUSTED_SENDING_DOMAINS.contains(fullDomain)) {
             motivos.add("Serviço de envio confiável: " + fullDomain);
@@ -101,7 +110,7 @@ public class PhishingService {
             return 25;
         }
         motivos.add("Domínio não reconhecido: " + senderRoot);
-        return 8; 
+        return 8;
     }
 
     private int contentRisk(String body, String subject, String senderRoot,
@@ -112,15 +121,13 @@ public class PhishingService {
         if (containsAny(text, "urgente", "imediato", "bloqueado",
                 "suspenso", "encerrado", "expira hoje", "última chance",
                 "sua conta será", "acesso será bloqueado")) {
-            int peso = remetenteConfiavel ? 10 : 25;
-            score += peso;
+            score += remetenteConfiavel ? 10 : 25;
             motivos.add("Linguagem de urgência detectada");
         }
         if (containsAny(text, "confirme sua senha", "atualize sua senha",
                 "informe seu cpf", "dados bancários", "cartão de crédito",
                 "verifique sua conta agora", "token de acesso")) {
-            int peso = remetenteConfiavel ? 5 : 25;
-            score += peso;
+            score += remetenteConfiavel ? 5 : 25;
             motivos.add("Possível solicitação de dados sensíveis");
         }
         if (containsAny(text, "você ganhou", "parabéns você foi selecionado",
@@ -137,6 +144,7 @@ public class PhishingService {
 
         return score;
     }
+
     private int linkAnalysis(List<String> links, String senderRoot,
                               boolean remetenteConfiavel, Set<String> motivos) {
         int score = 0;
@@ -148,6 +156,11 @@ public class PhishingService {
         for (String link : links) {
             String domain = extrairDominio(link);
             String root   = getRootDomain(domain);
+
+            // Ignora domínios de infraestrutura
+            if (LINK_IGNORE_DOMAINS.stream().anyMatch(d -> domain.contains(d) || root.contains(d))) {
+                continue;
+            }
 
             if (!adicionouExterno && !remetenteConfiavel
                     && !root.isBlank() && !root.equals(senderRoot)
@@ -178,10 +191,12 @@ public class PhishingService {
         }
         return Math.min(score, 40);
     }
+
     private boolean containsAny(String text, String... words) {
         for (String w : words) if (text.contains(w)) return true;
         return false;
     }
+
     private String safe(String s) { return s == null ? "" : s; }
 
     private String classificar(int score) {
@@ -189,6 +204,7 @@ public class PhishingService {
         if (score < 55) return "SUSPEITO";
         return "FRAUDE";
     }
+
     private String extrairDominioEmail(String from) {
         try {
             if (from.contains("@")) {
@@ -198,12 +214,14 @@ public class PhishingService {
         } catch (Exception ignored) {}
         return "";
     }
+
     private String extrairDominio(String url) {
         try {
             String host = new URI(url).getHost();
             return host == null ? "" : host.replace("www.", "");
         } catch (Exception e) { return ""; }
     }
+
     private String getRootDomain(String domain) {
         try {
             if (domain == null || domain.isBlank()) return "";

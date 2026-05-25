@@ -11,15 +11,23 @@ public class LinkExtractor {
         Pattern.CASE_INSENSITIVE
     );
 
+    // Domínios de infraestrutura/namespace que não são links reais
+    private static final Set<String> IGNORE_DOMAINS = Set.of(
+        "w3.org", "xmlsoap.org", "schemas.microsoft.com",
+        "googleapis.com", "gstatic.com", "googleusercontent.com",
+        "mimecast.com", "spf.protection.outlook.com",
+        "purl.org", "dublincore.org", "ogp.me"
+    );
+
     public static List<String> extrairLinks(String texto) {
         if (texto == null || texto.isBlank()) return List.of();
 
-        Set<String> links = new LinkedHashSet<>(); // LinkedHashSet mantém ordem e sem duplicatas
+        Set<String> links = new LinkedHashSet<>();
         Matcher matcher = URL_PATTERN.matcher(texto);
 
         while (matcher.find()) {
             String url = normalizar(matcher.group());
-            if (url != null && !url.isBlank()) {
+            if (url != null && !url.isBlank() && !deveIgnorar(url)) {
                 links.add(url);
             }
         }
@@ -27,9 +35,14 @@ public class LinkExtractor {
         return new ArrayList<>(links);
     }
 
+    private static boolean deveIgnorar(String url) {
+        String lower = url.toLowerCase();
+        return IGNORE_DOMAINS.stream().anyMatch(lower::contains);
+    }
+
     private static String normalizar(String url) {
         if (url == null) return null;
-        url = url.trim().replaceAll("[),.;!>\"']+$", ""); // remove pontuação no final
+        url = url.trim().replaceAll("[),.;!>\"']+$", "");
         if (url.toLowerCase().startsWith("www.")) {
             url = "http://" + url;
         }
