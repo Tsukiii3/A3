@@ -2,15 +2,14 @@ const API = window.location.hostname === 'localhost'
   ? 'http://localhost:8080'
   : 'https://a3-74um.onrender.com';
 const TOKEN = localStorage.getItem('phishguard_token');
- 
-/* Se não tiver token, vai pro login */
+
 if (!TOKEN) window.location.href = 'login.html';
- 
+
 /* ── HELPERS ── */
 const avatarColors = ['#ea4335','#1a73e8','#1e8e3e','#f6bf26','#9c27b0','#00bcd4','#ff5722','#607d8b'];
 function strColor(s) { let h=0; for(let c of s) h=(h*31+c.charCodeAt(0))%avatarColors.length; return avatarColors[h]; }
 function initials(name) { return name.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
- 
+
 function toast(msg, type='info') {
   const colors = { info:'#1a73e8', success:'#1e8e3e', danger:'#c5221f', warning:'#b06000' };
   const t = document.createElement('div');
@@ -25,7 +24,7 @@ function toast(msg, type='info') {
   setTimeout(() => { t.style.transform='translateX(-50%) translateY(80px)'; t.style.opacity='0';
     setTimeout(() => t.remove(), 300); }, 2600);
 }
- 
+
 /* ── API ── */
 async function apiFetch(path, options = {}) {
   const res = await fetch(`${API}${path}`, {
@@ -36,16 +35,16 @@ async function apiFetch(path, options = {}) {
       ...(options.headers || {})
     }
   });
- 
-  if (res.status === 401 || res.status === 403) {
+
+  if (res.status === 401) {
     localStorage.removeItem('phishguard_token');
     window.location.href = 'login.html';
     return null;
   }
- 
+
   return res;
 }
- 
+
 /* ── BADGE DE CLASSIFICAÇÃO ── */
 function badgePhishing(classificacao, score) {
   if (!classificacao) return '';
@@ -54,7 +53,7 @@ function badgePhishing(classificacao, score) {
     SUSPEITO: { bg: '#fef7e0', color: '#b06000', icon: '⚠' },
     FRAUDE:   { bg: '#fce8e6', color: '#c5221f', icon: '✕' },
   }[classificacao] || { bg: '#f1f3f4', color: '#5f6368', icon: '?' };
- 
+
   return `<span style="
     display:inline-flex;align-items:center;gap:4px;
     background:${cfg.bg};color:${cfg.color};
@@ -64,65 +63,75 @@ function badgePhishing(classificacao, score) {
     ${cfg.icon} ${classificacao} ${score != null ? `· ${score}` : ''}
   </span>`;
 }
- 
+
 /* ── DATA ── */
 let allEmails = [];
 let isLoading = false;
- 
-/* Converte resposta da API pro formato do frontend */
-function apiEmailParaLocal(apiEmail, index) {
-  const fromRaw = apiEmail.from || '';
-  const nomeMatch = fromRaw.match(/^(.+?)\s*</);
-  const addrMatch = fromRaw.match(/<(.+?)>/);
-  const nome = nomeMatch ? nomeMatch[1].trim() : fromRaw.replace(/<.*>/, '').trim();
-  const addr = addrMatch ? addrMatch[1] : fromRaw;
- 
-  return {
-    id:             index + 1,
-    folder:         'inbox',
-    from:           nome || addr,
-    addr:           addr,
-    subject:        apiEmail.subject || '(sem assunto)',
-    preview:        apiEmail.body ? apiEmail.body.substring(0, 100).replace(/\n/g, ' ') : '',
-    body:           apiEmail.body || '',
-    date:           'agora',
-    unread:         true,
-    starred:        false,
-    classificacao:  apiEmail.classificacao,
-    score:          apiEmail.score,
-    motivos:        apiEmail.motivos || [],
-  };
+
+function parseName(from) {
+  const m = from?.match(/^(.+?)\s*</);
+  return m ? m[1].trim() : (from || '').replace(/<.*>/, '').trim();
 }
- 
-/* Carrega emails do backend */
+
+function parseAddr(from) {
+  const m = from?.match(/<(.+?)>/);
+  return m ? m[1] : (from || '');
+}
+
+function formatarData(iso) {
+  if (!iso) return 'agora';
+  try {
+    const d = new Date(iso);
+    const hoje = new Date();
+    const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
+    if (d.toDateString() === hoje.toDateString())
+      return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    if (d.toDateString() === ontem.toDateString()) return 'Ontem';
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+  } catch { return 'agora'; }
+}
+
+/* ── CARREGAR EMAILS ── */
 async function carregarEmails() {
   if (isLoading) return;
   isLoading = true;
- 
   setLoadingState(true);
- 
+
   try {
-    const res = await apiFetch('/api/emails/analisar');
+    // Sincroniza novos emails do Gmail no banco
+    const syncRes = await apiFetch('/api/caixa/sincronizar', { method: 'POST' });
+    if (!syncRes) return;
+
+    // Carrega inbox do banco
+    const res = await apiFetch('/api/caixa/pasta/inbox');
     if (!res) return;
- 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.erro || 'Erro ao carregar emails');
-    }
- 
+    if (!res.ok) throw new Error('Erro ao carregar emails');
+
     const data = await res.json();
- 
-    /* Mantém emails locais (sent, drafts) e substitui inbox */
     const naoInbox = allEmails.filter(e => e.folder !== 'inbox');
-    const novosInbox = data.map((e, i) => apiEmailParaLocal(e, i));
- 
+    const novosInbox = data.map(e => ({
+      id:            e.id,
+      gmailId:       e.gmailId,
+      folder:        'inbox',
+      from:          parseName(e.from),
+      addr:          parseAddr(e.from),
+      subject:       e.subject || '(sem assunto)',
+      preview:       e.body ? e.body.replace(/<[^>]*>/g, '').substring(0, 100) : '',
+      body:          e.body || '',
+      date:          formatarData(e.recebidoEm),
+      unread:        !e.lido,
+      starred:       e.favorito,
+      classificacao: e.classificacao,
+      score:         e.score,
+      motivos:       e.motivos || [],
+    }));
+
     allEmails = [...novosInbox, ...naoInbox];
- 
     renderEmails();
     refreshBadges();
     atualizarContador();
-    toast(`${novosInbox.length} email(s) analisados`, 'success');
- 
+    toast(`${novosInbox.length} email(s) carregados`, 'success');
+
   } catch (err) {
     console.error(err);
     toast('Erro ao carregar emails: ' + err.message, 'danger');
@@ -131,13 +140,26 @@ async function carregarEmails() {
     setLoadingState(false);
   }
 }
- 
+
+async function carregarEmailsComRetry(tentativas = 3) {
+  for (let i = 0; i < tentativas; i++) {
+    try {
+      await carregarEmails();
+      return;
+    } catch (err) {
+      if (i < tentativas - 1) {
+        toast(`Reconectando... (${i + 1}/${tentativas})`, 'info');
+        await new Promise(r => setTimeout(r, 3000));
+      }
+    }
+  }
+}
+
 function setLoadingState(on) {
   const btn = document.getElementById('refreshBtn');
   const svg = btn?.querySelector('svg');
   if (!svg) return;
   if (on) {
-    svg.style.transition = 'transform 1s linear infinite';
     svg.style.animation = 'spin 1s linear infinite';
     const style = document.getElementById('spin-style') || document.createElement('style');
     style.id = 'spin-style';
@@ -148,7 +170,7 @@ function setLoadingState(on) {
     svg.style.transform = '';
   }
 }
- 
+
 function atualizarContador() {
   const inbox = allEmails.filter(e => e.folder === 'inbox');
   const el = document.querySelector('.cat-count');
@@ -156,18 +178,18 @@ function atualizarContador() {
   const pageInfo = document.getElementById('pageInfo');
   if (pageInfo) pageInfo.textContent = `1–${inbox.length} de ${inbox.length}`;
 }
- 
+
 /* ── AVATAR DO USUÁRIO LOGADO ── */
 function inicializarUsuario() {
   const nome  = localStorage.getItem('phishguard_nome') || '';
   const email = localStorage.getItem('phishguard_email') || '';
   const av    = document.querySelector('.avatar');
   if (!av) return;
- 
+
   const ini = nome
     ? nome.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase()
     : email.substring(0,2).toUpperCase();
- 
+
   av.textContent = ini;
   av.title = nome || email;
   av.style.cursor = 'pointer';
@@ -178,21 +200,21 @@ function inicializarUsuario() {
     }
   });
 }
- 
+
 /* ── STATE ── */
 let currentFolder = 'inbox';
 let openEmailId   = null;
 let selectedIds   = new Set();
 let searchQuery   = '';
 let composeMin    = false;
- 
+
 /* ── SETTINGS STATE ── */
 let settings = {
   dark: false, fontSize: 14, density: 'default',
   accent: '#1a73e8', autoRead: true, readingPane: true,
   notif: false, sound: false,
 };
- 
+
 /* ── DERIVED ── */
 function getVisible() {
   let list = allEmails.filter(e => {
@@ -209,12 +231,12 @@ function getVisible() {
   }
   return list;
 }
- 
+
 function unreadCount(folder) {
   if (folder === 'starred') return allEmails.filter(e => e.starred && e.unread).length;
   return allEmails.filter(e => e.folder === folder && e.unread).length;
 }
- 
+
 /* ── BADGES ── */
 function refreshBadges() {
   document.querySelectorAll('.nav-item[data-folder]').forEach(el => {
@@ -226,12 +248,12 @@ function refreshBadges() {
     badge.style.display = count ? '' : 'none';
   });
 }
- 
+
 /* ── RENDER ── */
 function renderEmails(list) {
   const el = document.getElementById('emailList');
   if (!list) list = getVisible();
- 
+
   if (!list.length) {
     el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:280px;color:var(--text-muted);gap:12px;">
       <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
@@ -239,9 +261,9 @@ function renderEmails(list) {
     </div>`;
     return;
   }
- 
+
   const rowH = { compact: '40px', default: '52px', comfortable: '64px' }[settings.density];
- 
+
   el.innerHTML = '';
   list.forEach(email => {
     const isSel = selectedIds.has(email.id);
@@ -249,10 +271,9 @@ function renderEmails(list) {
     row.className = 'email-row' + (email.unread?'':' read') + (openEmailId===email.id?' open':'') + (isSel?' selected':'');
     row.dataset.id = email.id;
     row.style.height = rowH;
- 
-    /* Badge de phishing na linha */
+
     const phishBadge = email.classificacao ? badgePhishing(email.classificacao, email.score) : '';
- 
+
     row.innerHTML = `
       <div class="row-check">
         <div class="checkbox${isSel?' checked':''}" data-check="${email.id}">
@@ -284,7 +305,7 @@ function renderEmails(list) {
           </button>
         </div>
       </div>`;
- 
+
     row.addEventListener('click', e => {
       if (e.target.closest('[data-check]')||e.target.closest('[data-star]')||e.target.closest('[data-action]')) return;
       openEmail(email);
@@ -300,11 +321,11 @@ function renderEmails(list) {
         if (btn.dataset.action==='markread') toggleRead(id);
       });
     });
- 
+
     el.appendChild(row);
   });
 }
- 
+
 /* ── SELECTION ── */
 function toggleSelect(id) {
   selectedIds.has(id) ? selectedIds.delete(id) : selectedIds.add(id);
@@ -323,20 +344,19 @@ document.getElementById('selectAll').addEventListener('click', () => {
   vis.forEach(e => all ? selectedIds.delete(e.id) : selectedIds.add(e.id));
   renderEmails(); updateSelectAll();
 });
- 
+
 /* ── STAR ── */
 async function toggleStar(id) {
   const email = allEmails.find(e => e.id === id);
   if (!email) return;
   email.starred = !email.starred;
   renderEmails(); refreshBadges();
-
   await apiFetch(`/api/caixa/${id}/favorito`, {
     method: 'PATCH',
     body: JSON.stringify({ favorito: email.starred })
   });
 }
- 
+
 /* ── READ ── */
 function toggleRead(id) {
   const email = allEmails.find(e=>e.id===id);
@@ -347,9 +367,13 @@ function toggleRead(id) {
 }
 function markAsRead(id) {
   const email = allEmails.find(e=>e.id===id);
-  if (email && email.unread && settings.autoRead) { email.unread=false; refreshBadges(); }
+  if (email && email.unread && settings.autoRead) {
+    email.unread = false;
+    refreshBadges();
+    apiFetch(`/api/caixa/${id}/lido`, { method: 'PATCH' });
+  }
 }
- 
+
 /* ── DELETE ── */
 function deleteEmail(id) {
   const idx = allEmails.findIndex(e=>e.id===id);
@@ -358,6 +382,7 @@ function deleteEmail(id) {
   selectedIds.delete(id);
   if (openEmailId===id) closeViewer();
   renderEmails(); refreshBadges();
+  apiFetch(`/api/caixa/${id}`, { method: 'DELETE' });
   toast('Mensagem excluída','danger');
 }
 function deleteSelected() {
@@ -367,23 +392,28 @@ function deleteSelected() {
     const idx = allEmails.findIndex(e=>e.id===id);
     if (idx!==-1) allEmails.splice(idx,1);
     if (openEmailId===id) closeViewer();
+    apiFetch(`/api/caixa/${id}`, { method: 'DELETE' });
   });
   selectedIds.clear();
   renderEmails(); refreshBadges();
   toast(`${count} mensagem(s) excluída(s)`,'danger');
 }
- 
+
 /* ── ARCHIVE ── */
 function archiveEmail(id) {
   const email = allEmails.find(e=>e.id===id);
   if (!email) return;
-  email.folder='archive';
+  email.folder = 'archive';
   selectedIds.delete(id);
   if (openEmailId===id) closeViewer();
   renderEmails(); refreshBadges();
+  apiFetch(`/api/caixa/${id}/pasta`, {
+    method: 'PATCH',
+    body: JSON.stringify({ pasta: 'archive' })
+  });
   toast('Mensagem arquivada');
 }
- 
+
 /* ── VIEWER ── */
 function openEmail(email) {
   openEmailId = email.id;
@@ -392,14 +422,13 @@ function openEmail(email) {
   document.getElementById('viewerSender').textContent = email.from;
   document.getElementById('viewerAddr').textContent   = `<${email.addr}>`;
   document.getElementById('viewerDate').textContent   = email.date;
- 
-  /* Body + painel de análise phishing */
-  const bodyEl = document.getElementById('viewerBody');
-  const isHtml = email.body.trim().startsWith('<');
+
+  const bodyEl  = document.getElementById('viewerBody');
+  const isHtml  = email.body.trim().startsWith('<');
   const bodyHtml = isHtml
-  ? email.body
-  : email.body.split('\n').map(l => l.trim() ? `<p>${l}</p>` : '<p>&nbsp;</p>').join('');
- 
+    ? email.body
+    : email.body.split('\n').map(l => l.trim() ? `<p>${l}</p>` : '<p>&nbsp;</p>').join('');
+
   let phishPanel = '';
   if (email.classificacao) {
     const cfg = {
@@ -407,18 +436,13 @@ function openEmail(email) {
       SUSPEITO: { bg:'#fef7e0', border:'#fbbc04', color:'#b06000', title:'Email suspeito' },
       FRAUDE:   { bg:'#fce8e6', border:'#ea4335', color:'#c5221f', title:'Possível fraude!' },
     }[email.classificacao] || {};
- 
+
     const motivosHtml = email.motivos.length
       ? email.motivos.map(m=>`<li style="margin:4px 0;font-size:13px;">${m}</li>`).join('')
       : '<li style="font-size:13px;color:var(--text-muted)">Sem indicadores detectados</li>';
- 
+
     phishPanel = `
-      <div style="
-        background:${cfg.bg};
-        border-left:4px solid ${cfg.border};
-        border-radius:8px;
-        padding:14px 16px;
-        margin-bottom:20px;">
+      <div style="background:${cfg.bg};border-left:4px solid ${cfg.border};border-radius:8px;padding:14px 16px;margin-bottom:20px;">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
           <strong style="color:${cfg.color};font-size:14px;">${cfg.title}</strong>
           <span style="color:${cfg.color};font-size:13px;opacity:0.8;">Score: ${email.score}/100</span>
@@ -428,27 +452,28 @@ function openEmail(email) {
         </ul>
       </div>`;
   }
- 
+
   bodyEl.innerHTML = phishPanel + bodyHtml;
- 
+
   const av = document.getElementById('viewerAvatar');
-  av.textContent=initials(email.from); av.style.background=strColor(email.from);
+  av.textContent = initials(email.from);
+  av.style.background = strColor(email.from);
   const svg = document.querySelector('#emailViewer .icon-btn[title="Com estrela"] svg');
-  if (svg) svg.setAttribute('fill', email.starred?'currentColor':'none');
+  if (svg) svg.setAttribute('fill', email.starred ? 'currentColor' : 'none');
   document.getElementById('emailViewer').classList.add('open');
   renderEmails();
 }
- 
+
 function closeViewer() {
   document.getElementById('emailViewer').classList.remove('open');
-  openEmailId=null; renderEmails();
+  openEmailId = null; renderEmails();
 }
- 
+
 document.getElementById('closeViewer').addEventListener('click', closeViewer);
 document.querySelector('#emailViewer .icon-btn[title="Com estrela"]').addEventListener('click', ()=>{ if(openEmailId) toggleStar(openEmailId); });
 document.querySelector('#emailViewer .icon-btn[title="Excluir"]').addEventListener('click',    ()=>{ if(openEmailId) deleteEmail(openEmailId); });
 document.querySelector('#emailViewer .icon-btn[title="Arquivo"]').addEventListener('click',    ()=>{ if(openEmailId) archiveEmail(openEmailId); });
- 
+
 /* ── COMPOSE ── */
 function openCompose(mode) {
   composeMin = false;
@@ -457,25 +482,37 @@ function openCompose(mode) {
   modal.classList.add('open');
   if (mode==='reply' && openEmailId) {
     const e = allEmails.find(x=>x.id===openEmailId);
-    if (e) { document.getElementById('composeTo').value=e.addr; document.getElementById('composeSubject').value='Re: '+e.subject; document.getElementById('composeBody').value=''; document.getElementById('composeBody').focus(); }
+    if (e) {
+      document.getElementById('composeTo').value = e.addr;
+      document.getElementById('composeSubject').value = 'Re: ' + e.subject;
+      document.getElementById('composeBody').value = '';
+      document.getElementById('composeBody').focus();
+    }
   } else if (mode==='forward' && openEmailId) {
     const e = allEmails.find(x=>x.id===openEmailId);
-    if (e) { document.getElementById('composeTo').value=''; document.getElementById('composeSubject').value='Fwd: '+e.subject; document.getElementById('composeBody').value='\n\n--- Mensagem encaminhada ---\nDe: '+e.from+'\nAssunto: '+e.subject+'\n\n'+e.body; document.getElementById('composeTo').focus(); }
+    if (e) {
+      document.getElementById('composeTo').value = '';
+      document.getElementById('composeSubject').value = 'Fwd: ' + e.subject;
+      document.getElementById('composeBody').value = '\n\n--- Mensagem encaminhada ---\nDe: '+e.from+'\nAssunto: '+e.subject+'\n\n'+e.body;
+      document.getElementById('composeTo').focus();
+    }
   } else {
-    document.getElementById('composeTo').value=''; document.getElementById('composeSubject').value=''; document.getElementById('composeBody').value='';
+    document.getElementById('composeTo').value = '';
+    document.getElementById('composeSubject').value = '';
+    document.getElementById('composeBody').value = '';
     document.getElementById('composeTo').focus();
   }
 }
- 
+
 document.getElementById('composeBtn').addEventListener('click', ()=>openCompose('new'));
 document.getElementById('replyBtn').addEventListener('click',   ()=>openCompose('reply'));
 document.getElementById('forwardBtn').addEventListener('click', ()=>openCompose('forward'));
 document.getElementById('closeCompose').addEventListener('click', ()=>{ document.getElementById('composeModal').classList.remove('open'); composeMin=false; });
 document.getElementById('minimizeCompose').addEventListener('click', ()=>{
   composeMin = !composeMin;
-  document.getElementById('composeModal').style.height = composeMin?'44px':'';
+  document.getElementById('composeModal').style.height = composeMin ? '44px' : '';
 });
- 
+
 document.getElementById('sendBtn').addEventListener('click', async () => {
   const to   = document.getElementById('composeTo').value.trim();
   const sub  = document.getElementById('composeSubject').value.trim();
@@ -497,7 +534,8 @@ document.getElementById('sendBtn').addEventListener('click', async () => {
     allEmails.push({
       id: newId, folder: 'sent', from: 'Você', addr: to,
       subject: sub, preview: body.substring(0, 80),
-      body, date: 'agora', unread: false, starred: false
+      body, date: formatarData(new Date().toISOString()),
+      unread: false, starred: false
     });
     document.getElementById('composeModal').classList.remove('open');
     toast('Mensagem enviada!', 'success');
@@ -508,68 +546,82 @@ document.getElementById('sendBtn').addEventListener('click', async () => {
     toast('Erro ao enviar: ' + (err.erro || 'Tente novamente'), 'danger');
   }
 });
- 
+
 document.getElementById('discardBtn').addEventListener('click', ()=>{
   document.getElementById('composeModal').classList.remove('open');
   toast('Rascunho descartado','danger');
 });
- 
-/* ── REFRESH — chama a API ── */
-document.getElementById('refreshBtn').addEventListener('click', () => {
-  carregarEmails();
-});
- 
+
+/* ── REFRESH ── */
+document.getElementById('refreshBtn').addEventListener('click', () => carregarEmails());
+
 /* ── TOOLBAR BULK ── */
 document.querySelectorAll('.tb-btn').forEach(btn=>{
-  const t=btn.textContent.trim();
-  if(t==='Excluir') btn.addEventListener('click',deleteSelected);
-  if(t==='Arquivo') btn.addEventListener('click',()=>{ if(!selectedIds.size) return; const c=selectedIds.size; [...selectedIds].forEach(id=>archiveEmail(id)); selectedIds.clear(); toast(`${c} mensagem(s) arquivada(s)`); });
-  if(t==='Spam')    btn.addEventListener('click',()=>{ if(!selectedIds.size&&!openEmailId){toast('Selecione uma mensagem','warning');return;} [...selectedIds].forEach(id=>deleteEmail(id)); if(openEmailId) deleteEmail(openEmailId); toast('Marcado como spam','warning'); });
-  if(t==='Filtrar') btn.addEventListener('click',()=>toast('Filtros em breve','info'));
+  const t = btn.textContent.trim();
+  if(t==='Excluir') btn.addEventListener('click', deleteSelected);
+  if(t==='Arquivo') btn.addEventListener('click', ()=>{ if(!selectedIds.size) return; const c=selectedIds.size; [...selectedIds].forEach(id=>archiveEmail(id)); selectedIds.clear(); toast(`${c} mensagem(s) arquivada(s)`); });
+  if(t==='Spam')    btn.addEventListener('click', ()=>{ if(!selectedIds.size&&!openEmailId){toast('Selecione uma mensagem','warning');return;} [...selectedIds].forEach(id=>deleteEmail(id)); if(openEmailId) deleteEmail(openEmailId); toast('Marcado como spam','warning'); });
+  if(t==='Filtrar') btn.addEventListener('click', ()=>toast('Filtros em breve','info'));
 });
- 
+
 /* ── FOLDERS ── */
 document.querySelectorAll('.nav-item[data-folder]').forEach(item=>{
-  item.addEventListener('click',()=>{
+  item.addEventListener('click', ()=>{
     document.querySelector('.nav-item.active')?.classList.remove('active');
     item.classList.add('active');
-    currentFolder=item.dataset.folder;
-    selectedIds.clear(); closeViewer(); renderEmails();
+    currentFolder = item.dataset.folder;
+
+    // Carrega pasta do banco se não for inbox
+    if (currentFolder !== 'inbox' && currentFolder !== 'sent') {
+      apiFetch(`/api/caixa/pasta/${currentFolder}`).then(async res => {
+        if (!res || !res.ok) return;
+        const data = await res.json();
+        const outros = allEmails.filter(e => e.folder !== currentFolder);
+        const novos  = data.map(e => ({
+          id: e.id, gmailId: e.gmailId, folder: e.pasta,
+          from: parseName(e.from), addr: parseAddr(e.from),
+          subject: e.subject || '(sem assunto)',
+          preview: e.body ? e.body.replace(/<[^>]*>/g,'').substring(0,100) : '',
+          body: e.body || '', date: formatarData(e.recebidoEm),
+          unread: !e.lido, starred: e.favorito,
+          classificacao: e.classificacao, score: e.score, motivos: e.motivos || [],
+        }));
+        allEmails = [...outros, ...novos];
+        renderEmails(); refreshBadges();
+      });
+    } else {
+      selectedIds.clear(); closeViewer(); renderEmails();
+    }
   });
 });
- 
+
 /* ── SEARCH ── */
 let searchTimer;
 document.querySelector('.search-input').addEventListener('input', e=>{
   clearTimeout(searchTimer);
-  searchTimer=setTimeout(()=>{ searchQuery=e.target.value.trim(); renderEmails(); },220);
+  searchTimer = setTimeout(()=>{ searchQuery=e.target.value.trim(); renderEmails(); }, 220);
 });
-document.querySelector('.search-input').addEventListener('keydown',e=>{
+document.querySelector('.search-input').addEventListener('keydown', e=>{
   if(e.key==='Escape'){ e.target.value=''; searchQuery=''; renderEmails(); e.target.blur(); }
 });
- 
+
 /* ── KEYBOARD ── */
 document.addEventListener('keydown', e => {
   const tag = document.activeElement.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-  if ((e.key === 'e' || e.key === 'E') && e.ctrlKey) { // ← CTRL+E
-    e.preventDefault();
-    openCompose('new');
-  }
+  if ((e.key === 'e' || e.key === 'E') && e.ctrlKey) { e.preventDefault(); openCompose('new'); }
   if (e.key === 'Escape' && openEmailId) closeViewer();
   if ((e.key === 'Delete' || e.key === 'Backspace') && openEmailId) deleteEmail(openEmailId);
 });
- 
-/* ════════════════════════════════════════
-   SETTINGS
-   ════════════════════════════════════════ */
+
+/* ── SETTINGS ── */
 function openSettings() { syncSettingsUI(); document.getElementById('settingsPanel').classList.add('open'); document.getElementById('settingsOverlay').classList.add('open'); }
 function closeSettings() { document.getElementById('settingsPanel').classList.remove('open'); document.getElementById('settingsOverlay').classList.remove('open'); }
- 
+
 document.getElementById('settingsBtn').addEventListener('click', openSettings);
 document.getElementById('closeSettings').addEventListener('click', closeSettings);
 document.getElementById('settingsOverlay').addEventListener('click', closeSettings);
- 
+
 function applySettings() {
   document.body.classList.toggle('dark', settings.dark);
   document.documentElement.style.setProperty('--font-size', settings.fontSize+'px');
@@ -583,101 +635,24 @@ function applySettings() {
 }
 function shadeColor(hex,pct){ const n=parseInt(hex.replace('#',''),16); const r=Math.min(255,Math.max(0,(n>>16)+pct)); const g=Math.min(255,Math.max(0,((n>>8)&0xff)+pct)); const b=Math.min(255,Math.max(0,(n&0xff)+pct)); return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 function hexToRgba(hex,a){ const n=parseInt(hex.replace('#',''),16); return `rgba(${n>>16},${(n>>8)&0xff},${n&0xff},${a})`; }
- 
+
 function syncSettingsUI() {
-  document.getElementById('darkToggle').checked     = settings.dark;
-  document.getElementById('fontSlider').value       = settings.fontSize;
-  document.getElementById('autoReadToggle').checked = settings.autoRead;
+  document.getElementById('darkToggle').checked        = settings.dark;
+  document.getElementById('fontSlider').value          = settings.fontSize;
+  document.getElementById('autoReadToggle').checked    = settings.autoRead;
   document.getElementById('readingPaneToggle').checked = settings.readingPane;
-  document.getElementById('notifToggle').checked    = settings.notif;
-  document.getElementById('soundToggle').checked    = settings.sound;
+  document.getElementById('notifToggle').checked       = settings.notif;
+  document.getElementById('soundToggle').checked       = settings.sound;
   updateFontPreview();
   document.querySelectorAll('.density-opt').forEach(el=>el.classList.toggle('active',el.dataset.density===settings.density));
   document.querySelectorAll('.color-swatch').forEach(el=>el.classList.toggle('active',el.dataset.color===settings.accent));
 }
 function updateFontPreview() {
-  const sz=document.getElementById('fontSlider').value;
-  const p=document.getElementById('fontPreview');
-  if(p) p.style.fontSize=sz+'px';
-}
- async function carregarEmailsComRetry(tentativas = 3) {
-  for (let i = 0; i < tentativas; i++) {
-    try {
-      await carregarEmails();
-      return;
-    } catch (err) {
-      if (i < tentativas - 1) {
-        toast(`Reconectando... (${i + 1}/${tentativas})`, 'info');
-        await new Promise(r => setTimeout(r, 3000));
-      }
-    }
-  }
-}
-async function carregarEmails() {
-  if (isLoading) return;
-  isLoading = true;
-  setLoadingState(true);
-
-  try {
-    // Primeiro sincroniza com Gmail
-    await apiFetch('/api/caixa/sincronizar', { method: 'POST' });
-
-    // Depois carrega do banco
-    const res = await apiFetch('/api/caixa/pasta/inbox');
-    if (!res) return;
-    if (!res.ok) throw new Error('Erro ao carregar emails');
-
-    const data = await res.json();
-    const naoInbox = allEmails.filter(e => e.folder !== 'inbox');
-    const novosInbox = data.map(e => ({
-      id:            e.id,
-      gmailId:       e.gmailId,
-      folder:        e.pasta,
-      from:          parseName(e.from),
-      addr:          parseAddr(e.from),
-      subject:       e.subject || '(sem assunto)',
-      preview:       e.body ? e.body.replace(/<[^>]*>/g, '').substring(0, 100) : '',
-      body:          e.body || '',
-      date:          formatarData(e.recebidoEm),
-      unread:        !e.lido,
-      starred:       e.favorito,
-      classificacao: e.classificacao,
-      score:         e.score,
-      motivos:       e.motivos || [],
-    }));
-
-    allEmails = [...novosInbox, ...naoInbox];
-    renderEmails();
-    refreshBadges();
-    atualizarContador();
-    toast(`${novosInbox.length} email(s) carregados`, 'success');
-
-  } catch (err) {
-    console.error(err);
-    toast('Erro ao carregar emails: ' + err.message, 'danger');
-  } finally {
-    isLoading = false;
-    setLoadingState(false);
-  }
+  const sz = document.getElementById('fontSlider').value;
+  const p  = document.getElementById('fontPreview');
+  if (p) p.style.fontSize = sz + 'px';
 }
 
-function parseName(from) {
-  const m = from?.match(/^(.+?)\s*</);
-  return m ? m[1].trim() : (from || '').replace(/<.*>/, '').trim();
-}
-
-function parseAddr(from) {
-  const m = from?.match(/<(.+?)>/);
-  return m ? m[1] : (from || '');
-}
-
-function formatarData(iso) {
-  if (!iso) return 'agora';
-  const d = new Date(iso);
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
-}
-
-carregarEmailsComRetry();
 document.getElementById('darkToggle').addEventListener('change',e=>{ settings.dark=e.target.checked; applySettings(); });
 document.getElementById('fontSlider').addEventListener('input',e=>{ settings.fontSize=parseInt(e.target.value); updateFontPreview(); applySettings(); });
 document.querySelectorAll('.density-opt').forEach(el=>{ el.addEventListener('click',()=>{ settings.density=el.dataset.density; document.querySelectorAll('.density-opt').forEach(x=>x.classList.remove('active')); el.classList.add('active'); renderEmails(); }); });
@@ -688,12 +663,10 @@ document.getElementById('notifToggle').addEventListener('change',e=>{ settings.n
 document.getElementById('soundToggle').addEventListener('change',e=>{ settings.sound=e.target.checked; });
 document.getElementById('saveSettings').addEventListener('click',()=>{ applySettings(); closeSettings(); toast('Configurações salvas!','success'); });
 document.getElementById('resetSettings').addEventListener('click',()=>{ settings={dark:false,fontSize:14,density:'default',accent:'#1a73e8',autoRead:true,readingPane:true,notif:false,sound:false}; syncSettingsUI(); applySettings(); toast('Configurações restauradas'); });
- 
+
 /* ── INIT ── */
 applySettings();
 inicializarUsuario();
-
-// Limpa emails antigos antes de carregar
 allEmails = [];
 renderEmails();
-carregarEmails();
+carregarEmailsComRetry();

@@ -4,7 +4,8 @@ public class GmailDTO {
     private String from;
     private String subject;
     private String body;
-    private String gmailId; 
+    private String gmailId;
+    private String date;
 
     public GmailDTO(String from, String subject, String body) {
         this.from    = from;
@@ -19,13 +20,10 @@ public class GmailDTO {
         this.gmailId = gmailId;
     }
 
-    public String getFrom()    { return from; }
-    public String getSubject() { return subject; }
-    public String getBody()    { return body; }
-    public String getGmailId() { return gmailId; }
-
-    public String getEmailId() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getEmailId'");
-    }
+    public String getFrom()       { return from; }
+    public String getSubject()    { return subject; }
+    public String getBody()       { return body; }
+    public String getGmailId()    { return gmailId; }
+    public String getDate()       { return date; }
+    public void setDate(String d) { this.date = d; }
 }
