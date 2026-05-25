@@ -216,7 +216,8 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const API = 'http://localhost:8080';
+  const API = 'https://a3-74um.onrender.com';
+  
 
   if (localStorage.getItem('phishguard_token')) {
     window.location.href = 'index.html';
@@ -231,8 +232,8 @@
     btn.innerHTML = `<div class="spinner"></div><span>Conectando...</span>`;
 
     // Abre popup do Google OAuth2
-    const clientId = 'SEU_GOOGLE_CLIENT_ID'; // ← troca aqui
-    const redirectUri = encodeURIComponent('postmessage');
+    const clientId = '14781768095-6m20r4e4lg84ng1tenrdo83vajpvfdfo.apps.googleusercontent.com'; // ← troca aqui
+    const redirectUri = encodeURIComponent('https://a3-74um.onrender.com/callback.html');
     const scope = encodeURIComponent('https://www.googleapis.com/auth/gmail.readonly email profile');
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
 

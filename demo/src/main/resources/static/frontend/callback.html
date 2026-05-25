@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Autenticando...</title>
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0f1117;
+      font-family: 'DM Sans', sans-serif;
+      color: #fff;
+    }
+    .msg {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      font-size: 15px;
+      color: #8a8f98;
+    }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #2a2d35;
+      border-top-color: #1a73e8;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="msg">
+    <div class="spinner"></div>
+    <span>Autenticando com Google...</span>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const code   = params.get('code');
+    const error  = params.get('error');
+
+    if (code) {
+      window.opener?.postMessage({ code }, window.location.origin);
+    } else {
+      window.opener?.postMessage({ error: error || 'Acesso negado' }, window.location.origin);
+    }
+
+    window.close();
+  </script>
+</body>
+</html>
