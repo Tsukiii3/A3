@@ -36,7 +36,7 @@ public class GmailService {
             .build();
 
         GoogleTokenResponse tokenResponse = flow.newTokenRequest(code)
-            .setRedirectUri("postmessage")
+            .setRedirectUri(System.getenv("GOOGLE_REDIRECT_URI")) // ← corrigido
             .execute();
 
         Credential credential = flow.createAndStoreCredential(tokenResponse, "temp");
@@ -85,7 +85,6 @@ public class GmailService {
         return emails;
     }
 
-    // Mantém compatibilidade com o fluxo antigo (token em arquivo)
     public List<GmailDTO> buscarEmails() throws Exception {
         NetHttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
         GoogleClientSecrets secrets = carregarSecrets();
@@ -156,19 +155,17 @@ public class GmailService {
             .setApplicationName(APP_NAME).build();
     }
 
-   private GoogleClientSecrets carregarSecrets() throws Exception {
-    // Tenta variável de ambiente primeiro (produção)
-    String credsJson = System.getenv("GOOGLE_CREDENTIALS");
-    if (credsJson != null && !credsJson.isBlank()) {
-        return GoogleClientSecrets.load(JSON,
-            new InputStreamReader(
-                new ByteArrayInputStream(credsJson.getBytes())));
+    private GoogleClientSecrets carregarSecrets() throws Exception {
+        String credsJson = System.getenv("GOOGLE_CREDENTIALS");
+        if (credsJson != null && !credsJson.isBlank()) {
+            return GoogleClientSecrets.load(JSON,
+                new InputStreamReader(
+                    new ByteArrayInputStream(credsJson.getBytes())));
+        }
+        InputStream in = GmailService.class.getResourceAsStream(CREDS_PATH);
+        if (in == null) throw new RuntimeException("credentials.json não encontrado!");
+        return GoogleClientSecrets.load(JSON, new InputStreamReader(in));
     }
-    // Fallback para arquivo local (desenvolvimento)
-    InputStream in = GmailService.class.getResourceAsStream(CREDS_PATH);
-    if (in == null) throw new RuntimeException("credentials.json não encontrado!");
-    return GoogleClientSecrets.load(JSON, new InputStreamReader(in));
-}
 
     private String extractBody(MessagePart payload) {
         try {
