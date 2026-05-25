@@ -1,4 +1,6 @@
-const API = 'http://localhost:8080';
+const API = window.location.hostname === 'localhost'
+  ? 'http://localhost:8080'
+  : 'https://a3-74um.onrender.com';
 const TOKEN = localStorage.getItem('phishguard_token');
  
 /* Se não tiver token, vai pro login */
