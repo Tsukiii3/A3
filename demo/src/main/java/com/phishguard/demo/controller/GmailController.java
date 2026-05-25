@@ -18,7 +18,7 @@ public class GmailController {
 
     private final GmailService         gmailService;
     private final PhishingOrchestrator orchestrator;
-    private final UsuarioRepository   usuarioRepo;
+    private final UsuarioRepository    usuarioRepo;
 
     public GmailController(GmailService gmailService,
                            PhishingOrchestrator orchestrator,
@@ -27,7 +27,6 @@ public class GmailController {
         this.orchestrator = orchestrator;
         this.usuarioRepo  = usuarioRepo;
     }
-
     @GetMapping("/analisar")
     public ResponseEntity<?> analisar() {
         try {
@@ -44,7 +43,6 @@ public class GmailController {
             } else {
                 emails = gmailService.buscarEmails();
             }
-
             List<Map<String, Object>> resp = new ArrayList<>();
             for (GmailDTO email : emails) {
                 AnalyseDTO r = orchestrator.analisarFluxoCompleto(email);
@@ -57,37 +55,35 @@ public class GmailController {
                 item.put("motivos",       r.getMotivos());
                 resp.add(item);
             }
-
             return ResponseEntity.ok(resp);
-
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500)
                 .body(Map.of("erro", e.getMessage()));
         }
-        @PostMapping("/enviar")
-public ResponseEntity<?> enviar(@RequestBody Map<String, String> body) {
-    try {
-        var auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !(auth.getPrincipal() instanceof Usuario usuario)) {
-            return ResponseEntity.status(401).body(Map.of("erro", "Não autenticado"));
-        }
-
-        String para   = body.get("para");
-        String assunto = body.get("assunto");
-        String corpo  = body.get("corpo");
-
-        if (para == null || assunto == null || corpo == null) {
-            return ResponseEntity.badRequest().body(Map.of("erro", "Campos obrigatórios ausentes"));
-        }
-
-        gmailService.enviarEmail(usuario, para, assunto, corpo);
-        return ResponseEntity.ok(Map.of("status", "enviado"));
-
-    } catch (Exception e) {
-        e.printStackTrace();
-        return ResponseEntity.status(500).body(Map.of("erro", e.getMessage()));
     }
-}
+    @PostMapping("/enviar")
+    public ResponseEntity<?> enviar(@RequestBody Map<String, String> body) {
+        try {
+            var auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth == null || !(auth.getPrincipal() instanceof Usuario usuario)) {
+                return ResponseEntity.status(401)
+                    .body(Map.of("erro", "Não autenticado"));
+            }
+            String para    = body.get("para");
+            String assunto = body.get("assunto");
+            String corpo   = body.get("corpo");
+
+            if (para == null || assunto == null || corpo == null) {
+                return ResponseEntity.badRequest()
+                    .body(Map.of("erro", "Campos obrigatórios ausentes"));
+            }
+            gmailService.enviarEmail(usuario, para, assunto, corpo);
+            return ResponseEntity.ok(Map.of("status", "enviado"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500)
+                .body(Map.of("erro", e.getMessage()));
+        }
     }
-}
+} 
