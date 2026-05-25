@@ -51,6 +51,7 @@ public class GmailController {
                 Map<String, Object> item = new LinkedHashMap<>();
                 item.put("from",          email.getFrom());
                 item.put("subject",       email.getSubject());
+                item.put("body",          email.getBody());
                 item.put("classificacao", r.getClassificacao());
                 item.put("score",         r.getScore());
                 item.put("motivos",       r.getMotivos());
@@ -64,5 +65,29 @@ public class GmailController {
             return ResponseEntity.status(500)
                 .body(Map.of("erro", e.getMessage()));
         }
+        @PostMapping("/enviar")
+public ResponseEntity<?> enviar(@RequestBody Map<String, String> body) {
+    try {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof Usuario usuario)) {
+            return ResponseEntity.status(401).body(Map.of("erro", "Não autenticado"));
+        }
+
+        String para   = body.get("para");
+        String assunto = body.get("assunto");
+        String corpo  = body.get("corpo");
+
+        if (para == null || assunto == null || corpo == null) {
+            return ResponseEntity.badRequest().body(Map.of("erro", "Campos obrigatórios ausentes"));
+        }
+
+        gmailService.enviarEmail(usuario, para, assunto, corpo);
+        return ResponseEntity.ok(Map.of("status", "enviado"));
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return ResponseEntity.status(500).body(Map.of("erro", e.getMessage()));
+    }
+}
     }
 }

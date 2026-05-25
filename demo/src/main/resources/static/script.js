@@ -468,19 +468,37 @@ document.getElementById('minimizeCompose').addEventListener('click', ()=>{
   document.getElementById('composeModal').style.height = composeMin?'44px':'';
 });
  
-document.getElementById('sendBtn').addEventListener('click', ()=>{
-  const to=document.getElementById('composeTo').value.trim();
-  const sub=document.getElementById('composeSubject').value.trim();
-  const body=document.getElementById('composeBody').value.trim();
-  if (!to)  { toast('Informe o destinatário','warning'); return; }
-  if (!sub) { toast('Informe o assunto','warning'); return; }
-  if (!body){ toast('O corpo está vazio','warning'); return; }
-  const newId = Math.max(0, ...allEmails.map(e=>e.id))+1;
-  allEmails.push({id:newId,folder:'sent',from:'Você',addr:to,subject:sub,preview:body.substring(0,80),body,date:'agora',unread:false,starred:false});
-  document.getElementById('composeModal').classList.remove('open');
-  toast('Mensagem enviada!','success');
-  if (currentFolder==='sent') renderEmails();
-  refreshBadges();
+document.getElementById('sendBtn').addEventListener('click', async () => {
+  const to   = document.getElementById('composeTo').value.trim();
+  const sub  = document.getElementById('composeSubject').value.trim();
+  const body = document.getElementById('composeBody').value.trim();
+
+  if (!to)   { toast('Informe o destinatário', 'warning'); return; }
+  if (!sub)  { toast('Informe o assunto', 'warning'); return; }
+  if (!body) { toast('O corpo está vazio', 'warning'); return; }
+
+  const res = await apiFetch('/api/emails/enviar', {
+    method: 'POST',
+    body: JSON.stringify({ para: to, assunto: sub, corpo: body })
+  });
+
+  if (!res) return;
+
+  if (res.ok) {
+    const newId = Math.max(0, ...allEmails.map(e => e.id)) + 1;
+    allEmails.push({
+      id: newId, folder: 'sent', from: 'Você', addr: to,
+      subject: sub, preview: body.substring(0, 80),
+      body, date: 'agora', unread: false, starred: false
+    });
+    document.getElementById('composeModal').classList.remove('open');
+    toast('Mensagem enviada!', 'success');
+    if (currentFolder === 'sent') renderEmails();
+    refreshBadges();
+  } else {
+    const err = await res.json().catch(() => ({}));
+    toast('Erro ao enviar: ' + (err.erro || 'Tente novamente'), 'danger');
+  }
 });
  
 document.getElementById('discardBtn').addEventListener('click', ()=>{

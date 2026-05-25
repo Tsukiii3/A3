@@ -24,7 +24,7 @@ public class GmailService {
     private static final String APP_NAME   = "PhishGuard";
     private static final GsonFactory JSON  = GsonFactory.getDefaultInstance();
     private static final String CREDS_PATH = "/credentials/credentials.json";
-    private static final List<String> SCOPES = List.of(GmailScopes.GMAIL_READONLY);
+    private static final List<String> SCOPES = List.of(GmailScopes.GMAIL_READONLY, GmailScopes.GMAIL_SEND);
 
     public TokenInfo trocarCodigoPorToken(String code) throws Exception {
         NetHttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
@@ -58,6 +58,24 @@ public class GmailService {
         return new TokenInfo(email, email.split("@")[0],
                              accessToken, refreshToken, expiracao);
     }
+    public void enviarEmail(Usuario usuario, String para, String assunto, String corpo) throws Exception {
+    Gmail service = getServiceParaUsuario(usuario);
+
+    // Monta o email em formato MIME
+    String emailRaw = "To: " + para + "\r\n"
+                    + "Subject: " + assunto + "\r\n"
+                    + "Content-Type: text/plain; charset=utf-8\r\n"
+                    + "\r\n"
+                    + corpo;
+
+    byte[] emailBytes = emailRaw.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    String encoded = Base64.getUrlEncoder().encodeToString(emailBytes);
+
+    Message message = new Message();
+    message.setRaw(encoded);
+
+    service.users().messages().send("me", message).execute();
+}
 
     public List<GmailDTO> buscarEmails(Usuario usuario) throws Exception {
         Gmail service = getServiceParaUsuario(usuario);

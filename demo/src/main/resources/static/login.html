@@ -233,7 +233,11 @@
 
     const clientId    = '14781768095-jppqe6ahirnn55egh3lad3pp0bdjhkl8.apps.googleusercontent.com';
     const redirectUri = encodeURIComponent('https://a3-74um.onrender.com/callback.html');
-    const scope       = encodeURIComponent('https://www.googleapis.com/auth/gmail.readonly email profile');
+    const scope = encodeURIComponent(
+  'https://www.googleapis.com/auth/gmail.readonly ' +
+  'https://www.googleapis.com/auth/gmail.send ' +
+  'email profile'
+);
     const url = `https://accounts.google.com/o/oauth2/v2/auth`
               + `?client_id=${clientId}`
               + `&redirect_uri=${redirectUri}`
