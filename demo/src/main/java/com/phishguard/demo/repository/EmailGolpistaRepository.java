@@ -9,6 +9,7 @@ import java.util.List;
 @Repository
 public interface EmailGolpistaRepository extends JpaRepository<EmailGolpistas, Long> {
     boolean existsByRemetente(String remetente);
+    void deleteByRemetente(String remetente);
     List<EmailGolpistas> findByDominio(String dominio);
     List<EmailGolpistas> findByClassificacao(String classificacao);
 }

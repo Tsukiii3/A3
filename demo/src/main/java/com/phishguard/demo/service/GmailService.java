@@ -129,7 +129,7 @@ public class GmailService {
             .setApplicationName(APP_NAME).build();
 
         ListMessagesResponse response = gmail.users().messages()
-            .list("me").setMaxResults(10L).execute();
+            .list("me").setMaxResults(50L).execute();
 
         List<Message> messages = response.getMessages();
         List<GmailDTO> emails  = new ArrayList<>();
@@ -151,27 +151,32 @@ public class GmailService {
         return emails;
     }
 
-    private Gmail getServiceParaUsuario(Usuario usuario) throws Exception {
-        NetHttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
-        GoogleClientSecrets secrets = carregarSecrets();
+   private Gmail getServiceParaUsuario(Usuario usuario) throws Exception {
+    NetHttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
+    GoogleClientSecrets secrets = carregarSecrets();
 
-        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-            transport, JSON, secrets, SCOPES)
-            .setAccessType("offline")
-            .build();
+    GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+        transport, JSON, secrets, SCOPES)
+        .setAccessType("offline")
+        .build();
 
-        GoogleTokenResponse tokenResponse = new GoogleTokenResponse();
-        tokenResponse.setAccessToken(usuario.getGmailAccessToken());
-        tokenResponse.setRefreshToken(usuario.getGmailRefreshToken());
-        tokenResponse.setTokenType("Bearer");
-        tokenResponse.setExpiresInSeconds(3600L);
+    GoogleTokenResponse tokenResponse = new GoogleTokenResponse();
+    tokenResponse.setAccessToken(usuario.getGmailAccessToken());
+    tokenResponse.setRefreshToken(usuario.getGmailRefreshToken());
+    tokenResponse.setTokenType("Bearer");
+    tokenResponse.setExpiresInSeconds(3600L);
 
-        Credential credential = flow.createAndStoreCredential(
-            tokenResponse, usuario.getEmail());
+    Credential credential = flow.createAndStoreCredential(
+        tokenResponse, usuario.getEmail());
 
-        return new Gmail.Builder(transport, JSON, credential)
-            .setApplicationName(APP_NAME).build();
+    // ← adiciona refresh automático
+    if (credential.getExpiresInSeconds() != null && credential.getExpiresInSeconds() <= 60) {
+        credential.refreshToken();
     }
+
+    return new Gmail.Builder(transport, JSON, credential)
+        .setApplicationName(APP_NAME).build();
+}
 
     private GoogleClientSecrets carregarSecrets() throws Exception {
         String credsJson = System.getenv("GOOGLE_CREDENTIALS");

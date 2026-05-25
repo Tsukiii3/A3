@@ -592,7 +592,22 @@ function updateFontPreview() {
   const p=document.getElementById('fontPreview');
   if(p) p.style.fontSize=sz+'px';
 }
- 
+ async function carregarEmailsComRetry(tentativas = 3) {
+  for (let i = 0; i < tentativas; i++) {
+    try {
+      await carregarEmails();
+      return;
+    } catch (err) {
+      if (i < tentativas - 1) {
+        toast(`Reconectando... (${i + 1}/${tentativas})`, 'info');
+        await new Promise(r => setTimeout(r, 3000));
+      }
+    }
+  }
+}
+
+// No INIT, troca carregarEmails() por:
+carregarEmailsComRetry();
 document.getElementById('darkToggle').addEventListener('change',e=>{ settings.dark=e.target.checked; applySettings(); });
 document.getElementById('fontSlider').addEventListener('input',e=>{ settings.fontSize=parseInt(e.target.value); updateFontPreview(); applySettings(); });
 document.querySelectorAll('.density-opt').forEach(el=>{ el.addEventListener('click',()=>{ settings.density=el.dataset.density; document.querySelectorAll('.density-opt').forEach(x=>x.classList.remove('active')); el.classList.add('active'); renderEmails(); }); });

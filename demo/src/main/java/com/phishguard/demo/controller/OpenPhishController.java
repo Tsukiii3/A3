@@ -1,7 +1,10 @@
 package com.phishguard.demo.controller;
 
 import com.phishguard.demo.loader.UrlHausLoader;
+import com.phishguard.demo.repository.EmailGolpistaRepository;
 import com.phishguard.demo.repository.UrlPhishingRepository;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
@@ -88,4 +91,15 @@ public class OpenPhishController {
             return host;
         } catch (Exception e) { return ""; }
     }
+    @DeleteMapping("/remover-remetente")
+     public ResponseEntity<?> removerRemetente(
+        @RequestParam String email,
+        @Autowired EmailGolpistaRepository emailRepo) {
+    if (emailRepo.existsByRemetente(email)) {
+        emailRepo.deleteByRemetente(email);
+        return ResponseEntity.ok(Map.of("status", "removido", "email", email));
+    }
+    return ResponseEntity.ok(Map.of("status", "não encontrado"));
+}
+
 }
