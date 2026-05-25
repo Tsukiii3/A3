@@ -24,61 +24,46 @@ public class OpenPhishLoader implements ApplicationRunner {
     }
     @Override
     public void run(ApplicationArguments args) {
-        long total = urlRepo.count();
-
-        if (total > 0) {
-            System.out.println(">>> Feeds: banco já populado com "
-                + total + " URLs. Pulando carga inicial.");
-            return;
-        }
-        System.out.println(">>> Feeds: banco vazio, iniciando carga completa...");
         carregarOpenPhish();
         urlHausLoader.carregar();
 
         System.out.println(">>> Carga total finalizada: "
             + urlRepo.count() + " URLs no banco.");
     }
-    private void carregarOpenPhish() {
-        System.out.println(">>> OpenPhish: iniciando...");
-        try {
-            RestTemplate rest = new RestTemplate();
-            String feed = rest.getForObject(OPENPHISH_FEED, String.class);
+   public int carregarOpenPhish() {
+    try {
+        RestTemplate rest = new RestTemplate();
+        String feed = rest.getForObject(OPENPHISH_FEED, String.class);
+        if (feed == null || feed.isBlank()) return 0;
 
-            if (feed == null || feed.isBlank()) {
-                System.out.println(">>> OpenPhish: feed indisponível.");
-                return;
+        String[] linhas = feed.split("\n");
+        List<UrlPhishing> novas = new ArrayList<>();
+
+        for (String linha : linhas) {
+            if (novas.size() >= 1000) break; // limite por recarga
+
+            String url = linha.trim();
+            if (url.isBlank() || urlRepo.existsByUrl(url)) continue;
+
+            String dominio = extrairDominio(url);
+            if (!dominio.isBlank()) {
+                novas.add(new UrlPhishing(url, dominio, "OpenPhish"));
             }
-            String[] linhas = feed.split("\n");
-            System.out.println(">>> OpenPhish: " + linhas.length + " URLs no feed.");
-
-            List<UrlPhishing> batch = new ArrayList<>();
-            int salvas = 0;
-
-            for (String linha : linhas) {
-                String url = linha.trim();
-                if (url.isBlank() || urlRepo.existsByUrl(url)) continue;
-
-                String dominio = extrairDominio(url);
-                if (dominio.isBlank()) continue;
-
-                batch.add(new UrlPhishing(url, dominio, "OpenPhish"));
-
-                if (batch.size() >= BATCH_SIZE) {
-                    urlRepo.saveAll(batch);
-                    salvas += batch.size();
-                    batch.clear();
-                }
-            }
-            if (!batch.isEmpty()) {
-                urlRepo.saveAll(batch);
-                salvas += batch.size();
-            }
-
-            System.out.println(">>> OpenPhish: " + salvas + " URLs salvas.");
-        } catch (Exception e) {
-            System.out.println(">>> OpenPhish erro: " + e.getMessage());
         }
+
+        if (novas.isEmpty()) return 0;
+
+        for (int i = 0; i < novas.size(); i += BATCH_SIZE) {
+            urlRepo.saveAll(novas.subList(i, Math.min(i + BATCH_SIZE, novas.size())));
+        }
+
+        return novas.size();
+
+    } catch (Exception e) {
+        System.out.println(">>> OpenPhish erro: " + e.getMessage());
+        return 0;
     }
+}
     private String extrairDominio(String url) {
         try {
             String host = new URI(url).getHost();

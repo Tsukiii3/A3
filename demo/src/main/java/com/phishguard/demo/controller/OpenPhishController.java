@@ -64,7 +64,7 @@ public class OpenPhishController {
                 .body(Map.of("erro", e.getMessage()));
         }
     }
-    @PostMapping("/urlhaus")
+    @PostMapping("/popular-urls")
     public ResponseEntity<?> recarregarUrlHaus() {
         long antes = urlRepo.count();
         urlHausLoader.carregar();
