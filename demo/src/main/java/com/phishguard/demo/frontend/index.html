@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PhisGuard</title>
+<link href="meu.css" rel="stylesheet">
+</head>
+<body>
+<header>
+  <div class="header-logo">
+    <div class="logo-icon">✉</div>
+    <span class="logo-name">Phis<span>Guard</span></span>
+  </div>
+  <div class="header-search">
+    <div class="search-wrap">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" class="search-input" placeholder="Pesquisar e-mails">
+    </div>
+  </div>
+  <div class="header-actions">
+    <button class="icon-btn" title="Ajuda">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+    </button>
+    <button class="icon-btn" id="settingsBtn" title="Configurações">
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <div class="avatar" title="Conta">JD</div>
+  </div>
+</header>
+
+<!-- BODY -->
+<div class="app-body">
+
+  <!-- SIDEBAR -->
+  <aside>
+    <button class="compose-btn" id="composeBtn">
+      <span class="compose-icon">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </span>
+      Escrever
+    </button>
+    <nav>
+      <div class="nav-item active" data-folder="inbox">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+        Caixa de entrada
+        <span class="nav-badge">24</span>
+      </div>
+      <div class="nav-item" data-folder="starred">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Com estrela
+        <span class="nav-badge">3</span>
+      </div>
+      <div class="nav-item" data-folder="sent">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Enviados
+      </div>
+      <div class="nav-item" data-folder="drafts">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Rascunhos
+        <span class="nav-badge">2</span>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <!-- TABS -->
+    <div class="cat-tabs">
+      <div class="cat-tab active">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+        Principal
+        <span class="cat-count">24</span>
+      </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+      <div class="checkbox" id="selectAll" title="Selecionar todos"></div>
+      <button class="tb-btn" id="refreshBtn" title="Atualizar">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
+      <div class="toolbar-divider"></div>
+      <button class="tb-btn">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+        Excluir
+      </button>
+      <button class="tb-btn">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+        Spam
+      </button>
+      <button class="tb-btn">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Arquivo
+      </button>
+      <div class="toolbar-divider"></div>
+      <button class="tb-btn">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        Filtrar
+      </button>
+      <div class="page-info">
+        <span id="pageInfo">1–10 de 1.847</span>
+        <button class="icon-btn" style="width:28px;height:28px;" title="Anterior">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="icon-btn" style="width:28px;height:28px;" title="Próximo">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- EMAIL LIST -->
+    <div class="email-list" id="emailList"></div>
+  </main>
+</div>
+
+<!-- EMAIL VIEWER -->
+<div class="email-viewer" id="emailViewer">
+  <div class="viewer-header">
+    <div class="viewer-top">
+      <button class="icon-btn" id="closeViewer">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      </button>
+      <h2 class="viewer-title" id="viewerTitle"></h2>
+      <button class="icon-btn" title="Com estrela">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </button>
+      <button class="icon-btn" title="Arquivo">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      </button>
+      <button class="icon-btn" title="Excluir">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+      </button>
+    </div>
+    <div class="viewer-meta">
+      <div class="sender-avatar" id="viewerAvatar"></div>
+      <div class="sender-info">
+        <div class="sender-name" id="viewerSender"></div>
+        <div class="sender-addr" id="viewerAddr"></div>
+      </div>
+      <div class="viewer-date" id="viewerDate"></div>
+    </div>
+  </div>
+  <div class="viewer-body" id="viewerBody"></div>
+  <div class="viewer-actions">
+    <button class="btn-primary" id="replyBtn">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline;margin-right:6px;vertical-align:-1px"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+      Responder
+    </button>
+    <button class="btn-secondary" id="forwardBtn">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline;margin-right:6px;vertical-align:-1px"><polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg>
+      Encaminhar
+    </button>
+  </div>
+</div>
+
+<!-- COMPOSE MODAL -->
+<div class="compose-modal" id="composeModal">
+  <div class="compose-header">
+    <span class="compose-title">Nova mensagem</span>
+    <button class="compose-header-btn" id="minimizeCompose" title="Minimizar">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+    <button class="compose-header-btn" id="closeCompose" title="Fechar">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="compose-field">
+    <label>Para</label>
+    <input type="text" id="composeTo">
+  </div>
+  <div class="compose-field">
+    <label>Assunto</label>
+    <input type="text" id="composeSubject">
+  </div>
+  <textarea class="compose-body-area" id="composeBody"></textarea>
+  <div class="compose-footer">
+    <button class="compose-send-btn" id="sendBtn">Enviar</button>
+    <button class="icon-btn" title="Anexar">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+    </button>
+    <button class="icon-btn" style="margin-left:auto;color:var(--danger)" id="discardBtn" title="Excluir rascunho">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- SETTINGS OVERLAY -->
+<div class="settings-overlay" id="settingsOverlay"></div>
+
+<!-- SETTINGS PANEL -->
+<div class="settings-panel" id="settingsPanel">
+  <div class="settings-header">
+    <button class="icon-btn" id="closeSettings">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <h2>Configurações</h2>
+  </div>
+
+  <div class="settings-body">
+
+    <!-- Aparência -->
+    <div class="settings-section">
+      <div class="settings-section-title">Aparência</div>
+
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Modo escuro</div>
+          <div class="settings-desc">Reduz o brilho para ambientes com pouca luz</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="darkToggle">
+          <div class="toggle-track"></div>
+        </label>
+      </div>
+
+      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:4px;">
+        <div class="settings-label">Tamanho da fonte</div>
+        <div class="settings-desc">Arraste para ajustar o tamanho do texto</div>
+        <input type="range" class="font-slider" id="fontSlider" min="12" max="18" step="1" value="14">
+        <div class="font-size-labels">
+          <span>Pequeno</span><span>Médio</span><span>Grande</span>
+        </div>
+        <div class="font-size-preview" id="fontPreview">
+          Prévia do tamanho de fonte selecionado. Assim o texto vai aparecer nos e-mails.
+        </div>
+      </div>
+
+      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
+        <div class="settings-label">Densidade</div>
+        <div class="settings-desc">Altura das linhas na lista de e-mails</div>
+        <div class="density-opts">
+          <div class="density-opt" data-density="compact">
+            <div class="density-opt-icon">▬▬▬</div>
+            Compacta
+          </div>
+          <div class="density-opt active" data-density="default">
+            <div class="density-opt-icon">▬▬</div>
+            Padrão
+          </div>
+          <div class="density-opt" data-density="comfortable">
+            <div class="density-opt-icon">▬</div>
+            Espaçada
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cor de destaque -->
+    <div class="settings-section">
+      <div class="settings-section-title">Cor de destaque</div>
+      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
+        <div class="settings-desc">Cor usada em botões, links e itens ativos</div>
+        <div class="color-opts" id="colorOpts">
+          <div class="color-swatch active" data-color="#1a73e8" style="background:#1a73e8" title="Azul"></div>
+          <div class="color-swatch" data-color="#1e8e3e" style="background:#1e8e3e" title="Verde"></div>
+          <div class="color-swatch" data-color="#9c27b0" style="background:#9c27b0" title="Roxo"></div>
+          <div class="color-swatch" data-color="#ea4335" style="background:#ea4335" title="Vermelho"></div>
+          <div class="color-swatch" data-color="#f6bf26" style="background:#f6bf26" title="Amarelo"></div>
+          <div class="color-swatch" data-color="#00bcd4" style="background:#00bcd4" title="Ciano"></div>
+          <div class="color-swatch" data-color="#ff5722" style="background:#ff5722" title="Laranja"></div>
+          <div class="color-swatch" data-color="#607d8b" style="background:#607d8b" title="Cinza"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leitura -->
+    <div class="settings-section">
+      <div class="settings-section-title">Leitura</div>
+
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Marcar como lido automaticamente</div>
+          <div class="settings-desc">Ao abrir um e-mail, marca como lido</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="autoReadToggle" checked>
+          <div class="toggle-track"></div>
+        </label>
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Painel de leitura</div>
+          <div class="settings-desc">Exibe o e-mail aberto ao lado da lista</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="readingPaneToggle" checked>
+          <div class="toggle-track"></div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Notificações -->
+    <div class="settings-section">
+      <div class="settings-section-title">Notificações</div>
+
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Notificações do navegador</div>
+          <div class="settings-desc">Alertas para novos e-mails importantes</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="notifToggle">
+          <div class="toggle-track"></div>
+        </label>
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">Som de notificação</div>
+          <div class="settings-desc">Reproduz um som ao receber e-mails</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="soundToggle">
+          <div class="toggle-track"></div>
+        </label>
+      </div>
+    </div>
+
+  </div><!-- /settings-body -->
+
+  <div class="settings-footer">
+    <button class="btn-settings-reset" id="resetSettings">Restaurar padrões</button>
+    <button class="btn-settings-save" id="saveSettings">Salvar</button>
+    <script src="script.js"></script>
+  </div>
+</div>
+</body>
+</html>
