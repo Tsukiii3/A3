@@ -186,28 +186,42 @@ public class GmailService {
     }
 
     private String extractBody(MessagePart payload) {
-        try {
-            if (payload.getBody() != null && payload.getBody().getData() != null) {
-                byte[] decoded = Base64.getUrlDecoder()
-                    .decode(payload.getBody().getData());
-                return new String(decoded, java.nio.charset.StandardCharsets.UTF_8);
-            }
-            if (payload.getParts() != null) {
-                for (MessagePart part : payload.getParts()) {
-                    if ("text/plain".equals(part.getMimeType())
-                            && part.getBody() != null
-                            && part.getBody().getData() != null) {
-                        return new String(
-                            Base64.getUrlDecoder().decode(part.getBody().getData()),
-                            java.nio.charset.StandardCharsets.UTF_8);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            System.out.println("Erro ao extrair body: " + e.getMessage());
+    try {
+        // Tenta pegar text/html primeiro, depois text/plain
+        String html  = extractPart(payload, "text/html");
+        if (html != null && !html.isBlank()) return html;
+
+        String plain = extractPart(payload, "text/plain");
+        if (plain != null && !plain.isBlank()) return plain;
+
+        // Fallback direto no body
+        if (payload.getBody() != null && payload.getBody().getData() != null) {
+            return new String(
+                Base64.getUrlDecoder().decode(payload.getBody().getData()),
+                java.nio.charset.StandardCharsets.UTF_8);
         }
-        return "";
+    } catch (Exception e) {
+        System.out.println("Erro ao extrair body: " + e.getMessage());
     }
+    return "";
+}
+
+private String extractPart(MessagePart payload, String mimeType) {
+    if (mimeType.equals(payload.getMimeType())
+            && payload.getBody() != null
+            && payload.getBody().getData() != null) {
+        return new String(
+            Base64.getUrlDecoder().decode(payload.getBody().getData()),
+            java.nio.charset.StandardCharsets.UTF_8);
+    }
+    if (payload.getParts() != null) {
+        for (MessagePart part : payload.getParts()) {
+            String result = extractPart(part, mimeType);
+            if (result != null) return result;
+        }
+    }
+    return null;
+}
 
     public record TokenInfo(
         String email,

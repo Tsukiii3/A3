@@ -390,7 +390,10 @@ function openEmail(email) {
  
   /* Body + painel de análise phishing */
   const bodyEl = document.getElementById('viewerBody');
-  const bodyHtml = email.body.split('\n').map(l=>l.trim()?`<p>${l}</p>`:'<p>&nbsp;</p>').join('');
+  const isHtml = email.body.trim().startsWith('<');
+  const bodyHtml = isHtml
+  ? email.body
+  : email.body.split('\n').map(l => l.trim() ? `<p>${l}</p>` : '<p>&nbsp;</p>').join('');
  
   let phishPanel = '';
   if (email.classificacao) {
