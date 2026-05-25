@@ -48,7 +48,7 @@ public class EmailController {
             int novos = 0;
 
             for (GmailDTO gmail : emails) {
-                String gmailId = gmail.getEmailId();
+                String gmailId = gmail.getGmailId();
                 if (gmailId != null && emailSalvoRepo.existsByUsuarioAndGmailId(usuario, gmailId)) {
                     continue; // já salvo
                 }
