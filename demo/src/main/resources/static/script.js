@@ -325,11 +325,16 @@ document.getElementById('selectAll').addEventListener('click', () => {
 });
  
 /* ── STAR ── */
-function toggleStar(id) {
-  const email = allEmails.find(e=>e.id===id);
+async function toggleStar(id) {
+  const email = allEmails.find(e => e.id === id);
   if (!email) return;
   email.starred = !email.starred;
   renderEmails(); refreshBadges();
+
+  await apiFetch(`/api/caixa/${id}/favorito`, {
+    method: 'PATCH',
+    body: JSON.stringify({ favorito: email.starred })
+  });
 }
  
 /* ── READ ── */
@@ -544,12 +549,15 @@ document.querySelector('.search-input').addEventListener('keydown',e=>{
 });
  
 /* ── KEYBOARD ── */
-document.addEventListener('keydown',e=>{
-  const tag=document.activeElement.tagName;
-  if(tag==='INPUT'||tag==='TEXTAREA') return;
-  if(e.key==='c'||e.key==='C') openCompose('new');
-  if(e.key==='Escape'&&openEmailId) closeViewer();
-  if((e.key==='Delete'||e.key==='Backspace')&&openEmailId) deleteEmail(openEmailId);
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if ((e.key === 'e' || e.key === 'E') && e.ctrlKey) { // ← CTRL+E
+    e.preventDefault();
+    openCompose('new');
+  }
+  if (e.key === 'Escape' && openEmailId) closeViewer();
+  if ((e.key === 'Delete' || e.key === 'Backspace') && openEmailId) deleteEmail(openEmailId);
 });
  
 /* ════════════════════════════════════════
@@ -605,8 +613,70 @@ function updateFontPreview() {
     }
   }
 }
+async function carregarEmails() {
+  if (isLoading) return;
+  isLoading = true;
+  setLoadingState(true);
 
-// No INIT, troca carregarEmails() por:
+  try {
+    // Primeiro sincroniza com Gmail
+    await apiFetch('/api/caixa/sincronizar', { method: 'POST' });
+
+    // Depois carrega do banco
+    const res = await apiFetch('/api/caixa/pasta/inbox');
+    if (!res) return;
+    if (!res.ok) throw new Error('Erro ao carregar emails');
+
+    const data = await res.json();
+    const naoInbox = allEmails.filter(e => e.folder !== 'inbox');
+    const novosInbox = data.map(e => ({
+      id:            e.id,
+      gmailId:       e.gmailId,
+      folder:        e.pasta,
+      from:          parseName(e.from),
+      addr:          parseAddr(e.from),
+      subject:       e.subject || '(sem assunto)',
+      preview:       e.body ? e.body.replace(/<[^>]*>/g, '').substring(0, 100) : '',
+      body:          e.body || '',
+      date:          formatarData(e.recebidoEm),
+      unread:        !e.lido,
+      starred:       e.favorito,
+      classificacao: e.classificacao,
+      score:         e.score,
+      motivos:       e.motivos || [],
+    }));
+
+    allEmails = [...novosInbox, ...naoInbox];
+    renderEmails();
+    refreshBadges();
+    atualizarContador();
+    toast(`${novosInbox.length} email(s) carregados`, 'success');
+
+  } catch (err) {
+    console.error(err);
+    toast('Erro ao carregar emails: ' + err.message, 'danger');
+  } finally {
+    isLoading = false;
+    setLoadingState(false);
+  }
+}
+
+function parseName(from) {
+  const m = from?.match(/^(.+?)\s*</);
+  return m ? m[1].trim() : (from || '').replace(/<.*>/, '').trim();
+}
+
+function parseAddr(from) {
+  const m = from?.match(/<(.+?)>/);
+  return m ? m[1] : (from || '');
+}
+
+function formatarData(iso) {
+  if (!iso) return 'agora';
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
 carregarEmailsComRetry();
 document.getElementById('darkToggle').addEventListener('change',e=>{ settings.dark=e.target.checked; applySettings(); });
 document.getElementById('fontSlider').addEventListener('input',e=>{ settings.fontSize=parseInt(e.target.value); updateFontPreview(); applySettings(); });
@@ -622,4 +692,8 @@ document.getElementById('resetSettings').addEventListener('click',()=>{ settings
 /* ── INIT ── */
 applySettings();
 inicializarUsuario();
-carregarEmails(); // carrega emails reais do backend na inicialização
+
+// Limpa emails antigos antes de carregar
+allEmails = [];
+renderEmails();
+carregarEmails();

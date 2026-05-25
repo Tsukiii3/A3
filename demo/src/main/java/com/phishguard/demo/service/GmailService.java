@@ -145,7 +145,7 @@ public class GmailService {
                 if ("From".equalsIgnoreCase(h.getName()))    from    = h.getValue();
             }
 
-            emails.add(new GmailDTO(from, subject, extractBody(full.getPayload())));
+            emails.add(new GmailDTO(from, subject, extractBody(full.getPayload()), full.getId()));
         }
 
         return emails;
