@@ -29,15 +29,19 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(
                 SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Endpoints públicos
-                .requestMatchers(
-                    "/auth/**",
-                    "/swagger-ui/**",
-                    "/v3/api-docs/**"
-                ).permitAll()
-                // Todo o resto exige JWT
-                .anyRequest().authenticated()
-            )
+            .requestMatchers(
+                "/auth/**",
+                "/swagger-ui/**",
+                "/v3/api-docs/**",
+                // ← adiciona essas linhas
+                "/",
+                "/*.html",
+                "/*.css",
+                "/*.js",
+                "/assets/**"
+            ).permitAll()
+            .anyRequest().authenticated()
+        )
             .addFilterBefore(jwtFilter,
                 UsernamePasswordAuthenticationFilter.class);
 
