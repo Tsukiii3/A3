@@ -1,3 +1,14 @@
+let settings = {
+  dark: false,
+  fontSize: 14,
+  density: 'default',
+  accent: '#1a73e8',
+  autoRead: true,
+  readingPane: true,
+  notif: false,
+  sound: false,
+};
+
 const API = window.location.hostname === 'localhost'
   ? 'http://localhost:8080'
   : 'https://a3-74um.onrender.com';
@@ -185,22 +196,48 @@ function atualizarContador() {
 function inicializarUsuario() {
   const nome  = localStorage.getItem('phishguard_nome') || '';
   const email = localStorage.getItem('phishguard_email') || '';
-  const av    = document.querySelector('.avatar');
-  if (!av) return;
+  const av = document.querySelector('.avatar');
+  if (av) {
+    const ini = nome
+      ? nome.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase()
+      : email.substring(0,2).toUpperCase();
+    av.textContent = ini;
+    av.title = nome || email;
+  }
 
-  const ini = nome
-    ? nome.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase()
-    : email.substring(0,2).toUpperCase();
+  const dNome  = document.getElementById('dropdownNome');
+  const dEmail = document.getElementById('dropdownEmail');
+  if (dNome)  dNome.textContent  = nome || 'Usuário';
+  if (dEmail) dEmail.textContent = email;
 
-  av.textContent = ini;
-  av.title = nome || email;
-  av.style.cursor = 'pointer';
-  av.addEventListener('click', () => {
+  const sInfo = document.getElementById('settingsAccountInfo');
+  if (sInfo) sInfo.textContent = `Logado como: ${email}`;
+
+  const avatarBtn = document.getElementById('avatarBtn');
+  const dropdown  = document.getElementById('accountDropdown');
+  if (avatarBtn && dropdown) {
+    avatarBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    });
+    document.addEventListener('click', () => {
+      if (dropdown) dropdown.style.display = 'none';
+    });
+  }
+  function trocarConta() {
+    localStorage.clear();
+    window.location.href = 'login.html';
+  }
+  function sair() {
     if (confirm(`Sair da conta ${email}?`)) {
       localStorage.clear();
       window.location.href = 'login.html';
     }
-  });
+  }
+  document.getElementById('trocarContaBtn')?.addEventListener('click', trocarConta);
+  document.getElementById('sairBtn')?.addEventListener('click', sair);
+  document.getElementById('settingsTrocarConta')?.addEventListener('click', trocarConta);
+  document.getElementById('settingsSair')?.addEventListener('click', sair);
 }
 
 /* ── STATE ── */
@@ -209,13 +246,6 @@ let openEmailId   = null;
 let selectedIds   = new Set();
 let searchQuery   = '';
 let composeMin    = false;
-
-/* ── SETTINGS STATE ── */
-let settings = {
-  dark: false, fontSize: 14, density: 'default',
-  accent: '#1a73e8', autoRead: true, readingPane: true,
-  notif: false, sound: false,
-};
 
 /* ── DERIVED ── */
 function getVisible() {
@@ -303,7 +333,7 @@ function renderEmails(list) {
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
           </button>
           <button class="row-action-btn" data-action="markread" data-id="${email.id}" title="${email.unread?'Marcar como lido':'Marcar como não lido'}">
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11-8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
       </div>`;
@@ -319,7 +349,7 @@ function renderEmails(list) {
         ev.stopPropagation();
         const id = parseInt(btn.dataset.id);
         if (btn.dataset.action==='delete')   deleteEmail(id);
-        if (btn.dataset.action==='archive')  archiveEmail(id);
+        if (btn.dataset.action==='archive')   archiveEmail(id);
         if (btn.dataset.action==='markread') toggleRead(id);
       });
     });
@@ -639,8 +669,8 @@ function shadeColor(hex,pct){ const n=parseInt(hex.replace('#',''),16); const r=
 function hexToRgba(hex,a){ const n=parseInt(hex.replace('#',''),16); return `rgba(${n>>16},${(n>>8)&0xff},${n&0xff},${a})`; }
 
 function syncSettingsUI() {
-  document.getElementById('darkToggle').checked        = settings.dark;
-  document.getElementById('fontSlider').value          = settings.fontSize;
+  document.getElementById('darkToggle').checked         = settings.dark;
+  document.getElementById('fontSlider').value           = settings.fontSize;
   document.getElementById('autoReadToggle').checked    = settings.autoRead;
   document.getElementById('readingPaneToggle').checked = settings.readingPane;
   document.getElementById('notifToggle').checked       = settings.notif;
@@ -659,10 +689,6 @@ document.getElementById('darkToggle').addEventListener('change',e=>{ settings.da
 document.getElementById('fontSlider').addEventListener('input',e=>{ settings.fontSize=parseInt(e.target.value); updateFontPreview(); applySettings(); });
 document.querySelectorAll('.density-opt').forEach(el=>{ el.addEventListener('click',()=>{ settings.density=el.dataset.density; document.querySelectorAll('.density-opt').forEach(x=>x.classList.remove('active')); el.classList.add('active'); renderEmails(); }); });
 document.querySelectorAll('.color-swatch').forEach(el=>{ el.addEventListener('click',()=>{ settings.accent=el.dataset.color; document.querySelectorAll('.color-swatch').forEach(x=>x.classList.remove('active')); el.classList.add('active'); applySettings(); }); });
-document.getElementById('autoReadToggle').addEventListener('change',e=>{ settings.autoRead=e.target.checked; });
-document.getElementById('readingPaneToggle').addEventListener('change',e=>{ settings.readingPane=e.target.checked; });
-document.getElementById('notifToggle').addEventListener('change',e=>{ settings.notif=e.target.checked; if(e.target.checked&&Notification.permission==='default') Notification.requestPermission(); });
-document.getElementById('soundToggle').addEventListener('change',e=>{ settings.sound=e.target.checked; });
 document.getElementById('saveSettings').addEventListener('click',()=>{ applySettings(); closeSettings(); toast('Configurações salvas!','success'); });
 document.getElementById('resetSettings').addEventListener('click',()=>{ settings={dark:false,fontSize:14,density:'default',accent:'#1a73e8',autoRead:true,readingPane:true,notif:false,sound:false}; syncSettingsUI(); applySettings(); toast('Configurações restauradas'); });
 

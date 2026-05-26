@@ -15,64 +15,67 @@ public class UrlHausLoader {
 
     private static final String URLHAUS_CSV =
         "https://urlhaus.abuse.ch/downloads/csv_recent/";
-    private static final int BATCH_SIZE = 400;
+    private static final int BATCH_SIZE = 500;
 
     private final UrlPhishingRepository urlRepo;
 
     public UrlHausLoader(UrlPhishingRepository urlRepo) {
         this.urlRepo = urlRepo;
     }
-   public int carregar() {
-    try {
-        RestTemplate rest = new RestTemplate();
-        byte[] zipBytes = rest.getForObject(URLHAUS_CSV, byte[].class);
-        if (zipBytes == null) return 0;
 
-        List<UrlPhishing> novas = new ArrayList<>();
+    public int carregar() {
+        try {
+            RestTemplate rest = new RestTemplate();
+            byte[] zipBytes = rest.getForObject(URLHAUS_CSV, byte[].class);
+            if (zipBytes == null) return 0;
 
-        try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
-            zis.getNextEntry();
-            BufferedReader reader = new BufferedReader(new InputStreamReader(zis));
-            String linha;
+            List<UrlPhishing> novas = new ArrayList<>();
+            Set<String> urlsNoBanco = new HashSet<>(urlRepo.findAllUrls()); // ← carrega tudo de uma vez
 
-            while ((linha = reader.readLine()) != null) {
-                if (novas.size() >= 1000) break; 
+            try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
+                zis.getNextEntry();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(zis));
+                String linha;
 
-                if (linha.startsWith("#") || linha.isBlank()) continue;
+                while ((linha = reader.readLine()) != null) {
+                    if (novas.size() >= 2000) break;
+                    if (linha.startsWith("#") || linha.isBlank()) continue;
 
-                String[] cols  = parseCsvLine(linha);
-                if (cols.length < 3) continue;
+                    String[] cols = parseCsvLine(linha);
+                    if (cols.length < 3) continue;
 
-                String url    = cols[2].replace("\"", "").trim();
-                String status = cols.length > 3 ? cols[3].replace("\"", "").trim() : "";
+                    String url    = cols[2].replace("\"", "").trim();
+                    String status = cols.length > 3 ? cols[3].replace("\"", "").trim() : "";
 
-                if (!status.equalsIgnoreCase("online")) continue;
-                if (url.isBlank() || !url.startsWith("http")) continue;
-                if (urlRepo.existsByUrl(url)) continue;
+                    if (!status.equalsIgnoreCase("online")) continue;
+                    if (url.isBlank() || !url.startsWith("http")) continue;
+                    if (urlsNoBanco.contains(url)) continue; // ← verifica em memória
 
-                String dominio = extrairDominio(url);
-                if (dominio.isBlank()) continue;
+                    String dominio = extrairDominio(url);
+                    if (dominio.isBlank()) continue;
 
-                String threat = cols.length > 5
-                    ? cols[5].replace("\"", "").trim() : "URLhaus";
+                    String threat = cols.length > 5
+                        ? cols[5].replace("\"", "").trim() : "URLhaus";
 
-                novas.add(new UrlPhishing(url, dominio, "URLhaus:" + threat));
+                    novas.add(new UrlPhishing(url, dominio, "URLhaus:" + threat));
+                    urlsNoBanco.add(url); // evita duplicatas dentro do próprio batch
+                }
             }
+
+            if (novas.isEmpty()) return 0;
+
+            for (int i = 0; i < novas.size(); i += BATCH_SIZE) {
+                urlRepo.saveAll(novas.subList(i, Math.min(i + BATCH_SIZE, novas.size())));
+            }
+
+            return novas.size();
+
+        } catch (Exception e) {
+            System.out.println(">>> URLhaus erro: " + e.getMessage());
+            return 0;
         }
-
-        if (novas.isEmpty()) return 0;
-
-        for (int i = 0; i < novas.size(); i += BATCH_SIZE) {
-            urlRepo.saveAll(novas.subList(i, Math.min(i + BATCH_SIZE, novas.size())));
-        }
-
-        return novas.size();
-
-    } catch (Exception e) {
-        System.out.println(">>> URLhaus erro: " + e.getMessage());
-        return 0;
     }
-}
+
     private String[] parseCsvLine(String linha) {
         List<String> cols   = new ArrayList<>();
         StringBuilder campo = new StringBuilder();
@@ -91,6 +94,7 @@ public class UrlHausLoader {
         cols.add(campo.toString());
         return cols.toArray(new String[0]);
     }
+
     private String extrairDominio(String url) {
         try {
             String host = new URI(url).getHost();
