@@ -50,7 +50,7 @@ public class EmailController {
             for (GmailDTO gmail : emails) {
                 String gmailId = gmail.getGmailId();
                 if (gmailId != null && emailSalvoRepo.existsByUsuarioAndGmailId(usuario, gmailId)) {
-                    continue; // já salvo
+                    continue;
                 }
 
                 AnalyseDTO analise = orchestrator.analisarFluxoCompleto(gmail);
@@ -59,6 +59,7 @@ public class EmailController {
                     usuario, gmailId != null ? gmailId : UUID.randomUUID().toString(),
                     gmail.getFrom(), gmail.getSubject(), gmail.getBody(), "inbox"
                 );
+                salvo.setDataOriginal(gmail.getDate());
                 salvo.setClassificacao(analise.getClassificacao());
                 salvo.setScore(analise.getScore());
                 salvo.setMotivos(analise.getMotivos());
@@ -147,6 +148,7 @@ public class EmailController {
         m.put("score",          e.getScore());
         m.put("motivos",        e.getMotivos());
         m.put("recebidoEm",     e.getRecebidoEm().toString());
+        m.put("dataOriginal", e.getDataOriginal());
         return m;
     }
 }

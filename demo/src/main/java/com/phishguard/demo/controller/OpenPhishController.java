@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+import com.phishguard.demo.model.EmailGolpistas;
 import com.phishguard.demo.model.UrlPhishing;
 import java.net.URI;
 import java.util.*;
@@ -24,6 +25,26 @@ public class OpenPhishController {
                            UrlHausLoader urlHausLoader) {
         this.urlRepo       = urlRepo;
         this.urlHausLoader = urlHausLoader;
+    }
+    @Autowired
+    private EmailGolpistaRepository emailGolpistaRepo;
+
+    @DeleteMapping("/limpar-dominio")
+    public ResponseEntity<?> limparDominio(@RequestParam String dominio) {
+        // Remove de emails_golpistas
+        List<EmailGolpistas> emails = emailGolpistaRepo.findByDominio(dominio);
+        emailGolpistaRepo.deleteAll(emails);
+
+        // Remove de urls_phishing  
+        List<UrlPhishing> urls = urlRepo.findByDominio(dominio);
+        urlRepo.deleteAll(urls);
+
+        return ResponseEntity.ok(Map.of(
+            "status", "removido",
+            "dominio", dominio,
+            "emails_removidos", emails.size(),
+            "urls_removidas", urls.size()
+        ));
     }
     @GetMapping("/stats")
     public ResponseEntity<?> stats() {

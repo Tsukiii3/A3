@@ -82,12 +82,15 @@ function formatarData(iso) {
   if (!iso) return 'agora';
   try {
     const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso; 
     const hoje = new Date();
     const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
     if (d.toDateString() === hoje.toDateString())
       return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     if (d.toDateString() === ontem.toDateString()) return 'Ontem';
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    if (d.getFullYear() === hoje.getFullYear())
+      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
   } catch { return 'agora'; }
 }
 
@@ -98,7 +101,6 @@ async function carregarEmails() {
   setLoadingState(true);
 
   try {
-    // Sincroniza novos emails do Gmail no banco
     const syncRes = await apiFetch('/api/caixa/sincronizar', { method: 'POST' });
     if (!syncRes) return;
 

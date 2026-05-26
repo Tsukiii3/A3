@@ -50,6 +50,12 @@ public class EmailSalvo {
     @Column(nullable = false)
     private LocalDateTime recebidoEm = LocalDateTime.now();
 
+    @Column
+     private String dataOriginal;
+
+     public String getDataOriginal()          { return dataOriginal; }
+     public void setDataOriginal(String data) { this.dataOriginal = data; }
+
     public EmailSalvo() {}
 
     public EmailSalvo(Usuario usuario, String gmailId, String remetente,
