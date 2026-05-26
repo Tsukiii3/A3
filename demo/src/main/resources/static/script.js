@@ -55,8 +55,8 @@ function badgePhishing(classificacao, score) {
   if (!classificacao) return '';
   const cfg = {
     SEGURO:   { bg: '#e6f4ea', color: '#1e8e3e', icon: '✓' },
-    SUSPEITO: { bg: '#fef7e0', color: '#b06000', icon: '⚠' },
-    FRAUDE:   { bg: '#fce8e6', color: '#c5221f', icon: '✕' },
+    SUSPEITO: { bg: '#fff8e1', color: '#b06000', icon: '⚠' },
+    FRAUDE:   { bg: '#fff8e1', color: '#b06000', icon: '⚠' },
   }[classificacao] || { bg: '#f1f3f4', color: '#5f6368', icon: '?' };
 
   return `<span style="
@@ -107,9 +107,7 @@ async function carregarEmails() {
   setLoadingState(true);
 
   try {
-    const syncRes = await apiFetch('/api/caixa/sincronizar', { method: 'POST' });
-    if (!syncRes) return;
-
+    // Carrega do banco PRIMEIRO — instantâneo
     const res = await apiFetch('/api/caixa/pasta/inbox');
     if (!res) return;
     if (!res.ok) throw new Error('Erro ao carregar emails');
@@ -137,7 +135,10 @@ async function carregarEmails() {
     renderEmails();
     refreshBadges();
     atualizarContador();
-    toast(`${novosInbox.length} email(s) carregados`, 'success');
+
+    if (novosInbox.length > 0) {
+      toast(`${novosInbox.length} email(s) carregados`, 'success');
+    }
 
   } catch (err) {
     console.error(err);
@@ -145,6 +146,21 @@ async function carregarEmails() {
   } finally {
     isLoading = false;
     setLoadingState(false);
+  }
+}
+
+/* ── SINCRONIZA EM SEGUNDO PLANO ── */
+async function sincronizarEmSegundoPlano() {
+  try {
+    const res = await apiFetch('/api/caixa/sincronizar', { method: 'POST' });
+    if (!res || !res.ok) return;
+    const data = await res.json();
+    if (data.sincronizados > 0) {
+      toast(`${data.sincronizados} novo(s) email(s)`, 'info');
+      await carregarEmails();
+    }
+  } catch (err) {
+    console.error('Sync em segundo plano falhou:', err);
   }
 }
 
@@ -462,8 +478,8 @@ function openEmail(email) {
   if (email.classificacao) {
     const cfg = {
       SEGURO:   { bg:'#e6f4ea', border:'#34a853', color:'#1e8e3e', title:'Email seguro' },
-      SUSPEITO: { bg:'#fef7e0', border:'#fbbc04', color:'#b06000', title:'Email suspeito' },
-      FRAUDE:   { bg:'#fce8e6', border:'#ea4335', color:'#c5221f', title:'Possível fraude!' },
+      SUSPEITO: { bg:'#fff8e1', border:'#fbbc04', color:'#b06000', title:'Email suspeito' },
+      FRAUDE:   { bg:'#fff8e1', border:'#fbbc04', color:'#b06000', title:'Possível fraude!' },
     }[email.classificacao] || {};
 
     const motivosHtml = email.motivos.length
@@ -582,7 +598,10 @@ document.getElementById('discardBtn').addEventListener('click', ()=>{
 });
 
 /* ── REFRESH ── */
-document.getElementById('refreshBtn').addEventListener('click', () => carregarEmails());
+document.getElementById('refreshBtn').addEventListener('click', async () => {
+  await carregarEmails();
+  sincronizarEmSegundoPlano();
+});
 
 /* ── TOOLBAR BULK ── */
 document.querySelectorAll('.tb-btn').forEach(btn=>{
@@ -697,4 +716,8 @@ applySettings();
 inicializarUsuario();
 allEmails = [];
 renderEmails();
-carregarEmailsComRetry();
+
+// Carrega do banco imediatamente, sincroniza Gmail em segundo plano
+carregarEmailsComRetry().then(() => {
+  setTimeout(() => sincronizarEmSegundoPlano(), 1000);
+});

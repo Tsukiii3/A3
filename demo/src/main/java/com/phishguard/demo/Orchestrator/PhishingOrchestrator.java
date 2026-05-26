@@ -6,7 +6,8 @@ import com.phishguard.demo.model.EmailGolpistas;
 import com.phishguard.demo.model.UrlPhishing;
 import com.phishguard.demo.repository.EmailGolpistaRepository;
 import com.phishguard.demo.repository.UrlPhishingRepository;
-import com.phishguard.demo.service.*;
+import com.phishguard.demo.service.AiAnalyseService;
+import com.phishguard.demo.service.PhishingService;
 import com.phishguard.demo.util.LinkExtractor;
 import org.springframework.stereotype.Service;
 
@@ -17,7 +18,6 @@ import java.util.*;
 public class PhishingOrchestrator {
 
     private final PhishingService         phishingService;
-    private final SafeBrowsingService     safeBrowsingService;
     private final AiAnalyseService        aiAnalyseService;
     private final EmailGolpistaRepository emailRepo;
     private final UrlPhishingRepository   urlRepo;
@@ -44,7 +44,6 @@ public class PhishingOrchestrator {
         "substack.com", "beehiiv.com"
     );
 
-    // Links desses domínios NUNCA são salvos como phishing
     private static final Set<String> LINK_WHITELIST = Set.of(
         "linkedin.com", "licdn.com", "google.com", "googleapis.com",
         "microsoft.com", "apple.com", "amazon.com", "amazon.com.br",
@@ -58,64 +57,52 @@ public class PhishingOrchestrator {
         "unsubscribe", "optout", "manage-preferences"
     );
 
-    public PhishingOrchestrator(PhishingService p, SafeBrowsingService s,
+    public PhishingOrchestrator(PhishingService p,
                                 AiAnalyseService a,
                                 EmailGolpistaRepository emailRepo,
                                 UrlPhishingRepository urlRepo) {
-        this.phishingService     = p;
-        this.safeBrowsingService = s;
-        this.aiAnalyseService    = a;
-        this.emailRepo           = emailRepo;
-        this.urlRepo             = urlRepo;
+        this.phishingService = p;
+        this.aiAnalyseService = a;
+        this.emailRepo = emailRepo;
+        this.urlRepo   = urlRepo;
     }
 
     public AnalyseDTO analisarFluxoCompleto(GmailDTO email) {
         String remetente = email.getFrom();
         String dominio   = extrairDominio(remetente);
 
-        // 0. Whitelist — domínios confiáveis nunca são bloqueados pelo banco
         if (TRUSTED_SENDERS_WHITELIST.contains(dominio)) {
             return phishingService.analisar(email);
         }
 
-        // 1. Consulta banco — remetente já conhecido como golpista?
         if (emailRepo.existsByRemetente(remetente)) {
             return new AnalyseDTO("FRAUDE", 100,
                 List.of("Remetente já identificado como golpista no histórico"));
         }
 
-        // 2. Consulta banco — domínio já conhecido como phishing?
         if (urlRepo.existsByDominio(dominio)) {
             return new AnalyseDTO("FRAUDE", 95,
                 List.of("Domínio do remetente consta na base de URLs de phishing"));
         }
 
-        // 3. Heurística base
         AnalyseDTO base = phishingService.analisar(email);
         int score = base.getScore();
         List<String> motivos = new ArrayList<>(base.getMotivos());
 
-        // 4. SafeBrowsing nos links
         List<String> links = LinkExtractor.extrairLinks(email.getBody());
         if (!links.isEmpty()) {
             for (String link : links) {
                 String linkDomain = extrairDominioDeUrl(link);
-                // Só verifica no banco se não for domínio da whitelist
                 if (!isLinkConfiavel(linkDomain) && urlRepo.existsByDominio(linkDomain)) {
                     score += 40;
                     motivos.add("Link no email consta na base de phishing: " + linkDomain);
                     break;
                 }
             }
-            if (safeBrowsingService.isMalicious(links)) {
-                score += 30;
-                motivos.add("SafeBrowsing: link malicioso confirmado");
-            }
         }
 
         score = Math.max(0, Math.min(score, 100));
 
-        // 5. IA para casos intermediários
         if (score >= 25 && score <= 80) {
             AnalyseDTO ia = aiAnalyseService.analisarComIA(email, score, motivos);
             score = (int) (score * 0.4 + ia.getScore() * 0.6);
@@ -127,10 +114,9 @@ public class PhishingOrchestrator {
                              : score < 55 ? "SUSPEITO"
                              : "FRAUDE";
 
-        // 6. Salva apenas se não for domínio confiável e score muito alto
         if (classificacao.equals("FRAUDE")
                 && !TRUSTED_SENDERS_WHITELIST.contains(dominio)
-                && score >= 80) { // ← só salva com alta certeza
+                && score >= 80) {
             salvarSeNovo(email, dominio, classificacao, score, motivos);
             salvarLinksPhishing(links);
         }
@@ -152,7 +138,6 @@ public class PhishingOrchestrator {
                     email.getBody().substring(0, Math.min(500, email.getBody().length())),
                     classificacao, score, motivos
                 ));
-                System.out.println(">>> Salvo no banco: " + email.getFrom());
             }
         } catch (Exception e) {
             System.out.println(">>> Erro ao salvar email: " + e.getMessage());
@@ -163,7 +148,6 @@ public class PhishingOrchestrator {
         for (String link : links) {
             try {
                 String dominio = extrairDominioDeUrl(link);
-                // Nunca salva domínios da whitelist
                 if (dominio.isBlank() || isLinkConfiavel(dominio)) continue;
                 if (!urlRepo.existsByUrl(link)) {
                     urlRepo.save(new UrlPhishing(link, dominio, "Detectado pelo sistema"));
