@@ -22,34 +22,41 @@ public class PhishingOrchestrator {
     private final EmailGolpistaRepository emailRepo;
     private final UrlPhishingRepository   urlRepo;
 
-    // Domínios sempre confiáveis — nunca salvos como golpistas
     private static final Set<String> TRUSTED_SENDERS_WHITELIST = Set.of(
-    // Social
-    "linkedin.com", "facebook.com", "instagram.com",
-    "twitter.com", "x.com", "youtube.com",
-    // Tech
-    "google.com", "gmail.com", "microsoft.com", "github.com",
-    "apple.com", "discord.com", "slack.com", "zoom.us",
-    // E-commerce
-    "amazon.com", "amazon.com.br", "mercadolivre.com.br",
-    "mercadopago.com.br", "shopee.com.br", "americanas.com.br",
-    // Financeiro BR
-    "nubank.com.br", "itau.com.br", "bradesco.com.br",
-    "santander.com.br", "bb.com.br", "caixa.gov.br",
-    "inter.co", "c6bank.com.br", "paypal.com",
-    // Streaming
-    "netflix.com", "spotify.com", "disneyplus.com",
-    // Serviços BR
-    "ifood.com.br", "uber.com", "99app.com",
-    "correios.com.br", "gov.br",
-    // Educação BR
-    "animaeducacao.com.br", "kroton.com.br", "cogna.com.br",
-    "anhanguera.com", "unopar.br",
-    // CDNs e infraestrutura de email legítimos
-    "licdn.com",    
-    "sendgrid.net", "amazonses.com", "mailchimp.com",
-    "klaviyo.com", "mailgun.org"
-);
+        "linkedin.com", "facebook.com", "instagram.com",
+        "twitter.com", "x.com", "youtube.com",
+        "google.com", "gmail.com", "microsoft.com", "github.com",
+        "apple.com", "discord.com", "slack.com", "zoom.us",
+        "amazon.com", "amazon.com.br", "mercadolivre.com.br",
+        "mercadopago.com.br", "shopee.com.br", "americanas.com.br",
+        "shein.com", "aliexpress.com", "magalu.com.br",
+        "nubank.com.br", "itau.com.br", "bradesco.com.br",
+        "santander.com.br", "bb.com.br", "caixa.gov.br",
+        "inter.co", "c6bank.com.br", "paypal.com",
+        "netflix.com", "spotify.com", "disneyplus.com",
+        "hbomax.com", "primevideo.com",
+        "ifood.com.br", "uber.com", "99app.com",
+        "correios.com.br", "gov.br", "receita.fazenda.gov.br",
+        "animaeducacao.com.br", "kroton.com.br", "cogna.com.br",
+        "anhanguera.com", "unopar.br",
+        "licdn.com", "sendgrid.net", "amazonses.com",
+        "mailchimp.com", "klaviyo.com", "mailgun.org",
+        "substack.com", "beehiiv.com"
+    );
+
+    // Links desses domínios NUNCA são salvos como phishing
+    private static final Set<String> LINK_WHITELIST = Set.of(
+        "linkedin.com", "licdn.com", "google.com", "googleapis.com",
+        "microsoft.com", "apple.com", "amazon.com", "amazon.com.br",
+        "facebook.com", "instagram.com", "twitter.com", "x.com",
+        "youtube.com", "github.com", "spotify.com", "netflix.com",
+        "nubank.com.br", "itau.com.br", "bradesco.com.br",
+        "mercadolivre.com.br", "shopee.com.br", "shein.com",
+        "ifood.com.br", "uber.com", "gov.br", "correios.com.br",
+        "w3.org", "schema.org", "gstatic.com", "googleusercontent.com",
+        "sendgrid.net", "amazonses.com", "mailchimp.com",
+        "unsubscribe", "optout", "manage-preferences"
+    );
 
     public PhishingOrchestrator(PhishingService p, SafeBrowsingService s,
                                 AiAnalyseService a,
@@ -93,7 +100,8 @@ public class PhishingOrchestrator {
         if (!links.isEmpty()) {
             for (String link : links) {
                 String linkDomain = extrairDominioDeUrl(link);
-                if (urlRepo.existsByDominio(linkDomain)) {
+                // Só verifica no banco se não for domínio da whitelist
+                if (!isLinkConfiavel(linkDomain) && urlRepo.existsByDominio(linkDomain)) {
                     score += 40;
                     motivos.add("Link no email consta na base de phishing: " + linkDomain);
                     break;
@@ -119,14 +127,20 @@ public class PhishingOrchestrator {
                              : score < 55 ? "SUSPEITO"
                              : "FRAUDE";
 
-        // 6. Salva apenas se não for domínio confiável
-        if (!classificacao.equals("SEGURO")
-                && !TRUSTED_SENDERS_WHITELIST.contains(dominio)) {
+        // 6. Salva apenas se não for domínio confiável e score muito alto
+        if (classificacao.equals("FRAUDE")
+                && !TRUSTED_SENDERS_WHITELIST.contains(dominio)
+                && score >= 80) { // ← só salva com alta certeza
             salvarSeNovo(email, dominio, classificacao, score, motivos);
-            salvarLinksPhishing(links, classificacao);
+            salvarLinksPhishing(links);
         }
 
         return new AnalyseDTO(classificacao, score, motivos);
+    }
+
+    private boolean isLinkConfiavel(String dominio) {
+        return LINK_WHITELIST.stream().anyMatch(d ->
+            dominio.equals(d) || dominio.endsWith("." + d));
     }
 
     private void salvarSeNovo(GmailDTO email, String dominio, String classificacao,
@@ -145,12 +159,13 @@ public class PhishingOrchestrator {
         }
     }
 
-    private void salvarLinksPhishing(List<String> links, String classificacao) {
-        if (!classificacao.equals("FRAUDE")) return;
+    private void salvarLinksPhishing(List<String> links) {
         for (String link : links) {
             try {
                 String dominio = extrairDominioDeUrl(link);
-                if (!dominio.isBlank() && !urlRepo.existsByUrl(link)) {
+                // Nunca salva domínios da whitelist
+                if (dominio.isBlank() || isLinkConfiavel(dominio)) continue;
+                if (!urlRepo.existsByUrl(link)) {
                     urlRepo.save(new UrlPhishing(link, dominio, "Detectado pelo sistema"));
                 }
             } catch (Exception e) {
@@ -167,7 +182,6 @@ public class PhishingOrchestrator {
                 String[] parts = d.split("\\.");
                 if (parts.length >= 2) {
                     String last2 = parts[parts.length - 2] + "." + parts[parts.length - 1];
-                    // Trata .com.br, .org.br, .gov.br
                     if ((last2.equals("com.br") || last2.equals("org.br")
                             || last2.equals("gov.br")) && parts.length >= 3) {
                         return parts[parts.length - 3] + "." + last2;
