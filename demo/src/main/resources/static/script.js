@@ -3,10 +3,6 @@ let settings = {
   fontSize: 14,
   density: 'default',
   accent: '#1a73e8',
-  autoRead: true,
-  readingPane: true,
-  notif: false,
-  sound: false,
 };
 
 const API = window.location.hostname === 'localhost'
@@ -46,13 +42,11 @@ async function apiFetch(path, options = {}) {
       ...(options.headers || {})
     }
   });
-
   if (res.status === 401) {
     localStorage.removeItem('phishguard_token');
     window.location.href = 'login.html';
     return null;
   }
-
   return res;
 }
 
@@ -92,8 +86,9 @@ function parseAddr(from) {
 function formatarData(iso) {
   if (!iso) return 'agora';
   try {
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return iso; 
+    const limpo = iso.replace(/\s*\([^)]*\)\s*$/, '').trim();
+    const d = new Date(limpo);
+    if (isNaN(d.getTime())) return iso;
     const hoje = new Date();
     const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
     if (d.toDateString() === hoje.toDateString())
@@ -115,7 +110,6 @@ async function carregarEmails() {
     const syncRes = await apiFetch('/api/caixa/sincronizar', { method: 'POST' });
     if (!syncRes) return;
 
-    // Carrega inbox do banco
     const res = await apiFetch('/api/caixa/pasta/inbox');
     if (!res) return;
     if (!res.ok) throw new Error('Erro ao carregar emails');
@@ -131,7 +125,7 @@ async function carregarEmails() {
       subject:       e.subject || '(sem assunto)',
       preview:       e.body ? e.body.replace(/<[^>]*>/g, '').substring(0, 100) : '',
       body:          e.body || '',
-      date:          formatarData(e.recebidoEm),
+      date:          formatarData(e.dataOriginal || e.recebidoEm),
       unread:        !e.lido,
       starred:       e.favorito,
       classificacao: e.classificacao,
@@ -196,6 +190,7 @@ function atualizarContador() {
 function inicializarUsuario() {
   const nome  = localStorage.getItem('phishguard_nome') || '';
   const email = localStorage.getItem('phishguard_email') || '';
+
   const av = document.querySelector('.avatar');
   if (av) {
     const ini = nome
@@ -224,6 +219,7 @@ function inicializarUsuario() {
       if (dropdown) dropdown.style.display = 'none';
     });
   }
+
   function trocarConta() {
     localStorage.clear();
     window.location.href = 'login.html';
@@ -234,6 +230,7 @@ function inicializarUsuario() {
       window.location.href = 'login.html';
     }
   }
+
   document.getElementById('trocarContaBtn')?.addEventListener('click', trocarConta);
   document.getElementById('sairBtn')?.addEventListener('click', sair);
   document.getElementById('settingsTrocarConta')?.addEventListener('click', trocarConta);
@@ -333,7 +330,7 @@ function renderEmails(list) {
             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
           </button>
           <button class="row-action-btn" data-action="markread" data-id="${email.id}" title="${email.unread?'Marcar como lido':'Marcar como não lido'}">
-            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11-8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
       </div>`;
@@ -349,7 +346,7 @@ function renderEmails(list) {
         ev.stopPropagation();
         const id = parseInt(btn.dataset.id);
         if (btn.dataset.action==='delete')   deleteEmail(id);
-        if (btn.dataset.action==='archive')   archiveEmail(id);
+        if (btn.dataset.action==='archive')  archiveEmail(id);
         if (btn.dataset.action==='markread') toggleRead(id);
       });
     });
@@ -399,7 +396,7 @@ function toggleRead(id) {
 }
 function markAsRead(id) {
   const email = allEmails.find(e=>e.id===id);
-  if (email && email.unread && settings.autoRead) {
+  if (email && email.unread) {
     email.unread = false;
     refreshBadges();
     apiFetch(`/api/caixa/${id}/lido`, { method: 'PATCH' });
@@ -603,7 +600,6 @@ document.querySelectorAll('.nav-item[data-folder]').forEach(item=>{
     item.classList.add('active');
     currentFolder = item.dataset.folder;
 
-    // Carrega pasta do banco se não for inbox
     if (currentFolder !== 'inbox' && currentFolder !== 'sent') {
       apiFetch(`/api/caixa/pasta/${currentFolder}`).then(async res => {
         if (!res || !res.ok) return;
@@ -614,7 +610,8 @@ document.querySelectorAll('.nav-item[data-folder]').forEach(item=>{
           from: parseName(e.from), addr: parseAddr(e.from),
           subject: e.subject || '(sem assunto)',
           preview: e.body ? e.body.replace(/<[^>]*>/g,'').substring(0,100) : '',
-          body: e.body || '', date: formatarData(e.recebidoEm),
+          body: e.body || '',
+          date: formatarData(e.dataOriginal || e.recebidoEm),
           unread: !e.lido, starred: e.favorito,
           classificacao: e.classificacao, score: e.score, motivos: e.motivos || [],
         }));
@@ -647,8 +644,15 @@ document.addEventListener('keydown', e => {
 });
 
 /* ── SETTINGS ── */
-function openSettings() { syncSettingsUI(); document.getElementById('settingsPanel').classList.add('open'); document.getElementById('settingsOverlay').classList.add('open'); }
-function closeSettings() { document.getElementById('settingsPanel').classList.remove('open'); document.getElementById('settingsOverlay').classList.remove('open'); }
+function openSettings() {
+  syncSettingsUI();
+  document.getElementById('settingsPanel').classList.add('open');
+  document.getElementById('settingsOverlay').classList.add('open');
+}
+function closeSettings() {
+  document.getElementById('settingsPanel').classList.remove('open');
+  document.getElementById('settingsOverlay').classList.remove('open');
+}
 
 document.getElementById('settingsBtn').addEventListener('click', openSettings);
 document.getElementById('closeSettings').addEventListener('click', closeSettings);
@@ -669,12 +673,8 @@ function shadeColor(hex,pct){ const n=parseInt(hex.replace('#',''),16); const r=
 function hexToRgba(hex,a){ const n=parseInt(hex.replace('#',''),16); return `rgba(${n>>16},${(n>>8)&0xff},${n&0xff},${a})`; }
 
 function syncSettingsUI() {
-  document.getElementById('darkToggle').checked         = settings.dark;
-  document.getElementById('fontSlider').value           = settings.fontSize;
-  document.getElementById('autoReadToggle').checked    = settings.autoRead;
-  document.getElementById('readingPaneToggle').checked = settings.readingPane;
-  document.getElementById('notifToggle').checked       = settings.notif;
-  document.getElementById('soundToggle').checked       = settings.sound;
+  document.getElementById('darkToggle').checked = settings.dark;
+  document.getElementById('fontSlider').value   = settings.fontSize;
   updateFontPreview();
   document.querySelectorAll('.density-opt').forEach(el=>el.classList.toggle('active',el.dataset.density===settings.density));
   document.querySelectorAll('.color-swatch').forEach(el=>el.classList.toggle('active',el.dataset.color===settings.accent));
@@ -690,7 +690,7 @@ document.getElementById('fontSlider').addEventListener('input',e=>{ settings.fon
 document.querySelectorAll('.density-opt').forEach(el=>{ el.addEventListener('click',()=>{ settings.density=el.dataset.density; document.querySelectorAll('.density-opt').forEach(x=>x.classList.remove('active')); el.classList.add('active'); renderEmails(); }); });
 document.querySelectorAll('.color-swatch').forEach(el=>{ el.addEventListener('click',()=>{ settings.accent=el.dataset.color; document.querySelectorAll('.color-swatch').forEach(x=>x.classList.remove('active')); el.classList.add('active'); applySettings(); }); });
 document.getElementById('saveSettings').addEventListener('click',()=>{ applySettings(); closeSettings(); toast('Configurações salvas!','success'); });
-document.getElementById('resetSettings').addEventListener('click',()=>{ settings={dark:false,fontSize:14,density:'default',accent:'#1a73e8',autoRead:true,readingPane:true,notif:false,sound:false}; syncSettingsUI(); applySettings(); toast('Configurações restauradas'); });
+document.getElementById('resetSettings').addEventListener('click',()=>{ settings={dark:false,fontSize:14,density:'default',accent:'#1a73e8'}; syncSettingsUI(); applySettings(); toast('Configurações restauradas'); });
 
 /* ── INIT ── */
 applySettings();
