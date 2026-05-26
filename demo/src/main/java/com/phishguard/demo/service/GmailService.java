@@ -76,80 +76,34 @@ public class GmailService {
 
     service.users().messages().send("me", message).execute();
 }
-
     public List<GmailDTO> buscarEmails(Usuario usuario) throws Exception {
-        Gmail service = getServiceParaUsuario(usuario);
+    Gmail service = getServiceParaUsuario(usuario);
 
-        ListMessagesResponse response = service.users().messages()
-            .list("me").setMaxResults(10L).execute();
+    ListMessagesResponse response = service.users().messages()
+        .list("me").setMaxResults(50L).execute(); // ← 10 para 50
 
-        List<Message> messages = response.getMessages();
-        List<GmailDTO> emails  = new ArrayList<>();
-        if (messages == null) return emails;
+    List<Message> messages = response.getMessages();
+    List<GmailDTO> emails  = new ArrayList<>();
+    if (messages == null) return emails;
 
-        for (Message msg : messages) {
-            Message full = service.users().messages()
-                .get("me", msg.getId()).execute();
+    for (Message msg : messages) {
+        Message full = service.users().messages()
+            .get("me", msg.getId()).execute();
 
-            String subject = "", from = "";
-            for (MessagePartHeader h : full.getPayload().getHeaders()) {
-                if ("Subject".equalsIgnoreCase(h.getName())) subject = h.getValue();
-                if ("From".equalsIgnoreCase(h.getName()))    from    = h.getValue();
-            }
-
-            emails.add(new GmailDTO(from, subject, extractBody(full.getPayload())));
+        String subject = "", from = "", date = "";
+        for (MessagePartHeader h : full.getPayload().getHeaders()) {
+            if ("Subject".equalsIgnoreCase(h.getName())) subject = h.getValue();
+            if ("From".equalsIgnoreCase(h.getName()))    from    = h.getValue();
+            if ("Date".equalsIgnoreCase(h.getName()))    date    = h.getValue(); // ← pega data
         }
 
-        return emails;
+        GmailDTO dto = new GmailDTO(from, subject, extractBody(full.getPayload()), full.getId());
+        dto.setDate(date); // ← salva data
+        emails.add(dto);
     }
 
-    public List<GmailDTO> buscarEmails() throws Exception {
-        NetHttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
-        GoogleClientSecrets secrets = carregarSecrets();
-
-        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-            transport, JSON, secrets, SCOPES)
-            .setDataStoreFactory(
-                new com.google.api.client.util.store.FileDataStoreFactory(
-                    new java.io.File("tokens")))
-            .setAccessType("offline")
-            .build();
-
-        com.google.api.client.extensions.java6.auth.oauth2
-            .AuthorizationCodeInstalledApp app =
-            new com.google.api.client.extensions.java6.auth.oauth2
-                .AuthorizationCodeInstalledApp(
-                flow,
-                new com.google.api.client.extensions.jetty.auth.oauth2
-                    .LocalServerReceiver());
-
-        Credential credential = app.authorize("user");
-
-        Gmail gmail = new Gmail.Builder(transport, JSON, credential)
-            .setApplicationName(APP_NAME).build();
-
-        ListMessagesResponse response = gmail.users().messages()
-            .list("me").setMaxResults(50L).execute();
-
-        List<Message> messages = response.getMessages();
-        List<GmailDTO> emails  = new ArrayList<>();
-        if (messages == null) return emails;
-
-        for (Message msg : messages) {
-            Message full = gmail.users().messages()
-                .get("me", msg.getId()).execute();
-
-            String subject = "", from = "";
-            for (MessagePartHeader h : full.getPayload().getHeaders()) {
-                if ("Subject".equalsIgnoreCase(h.getName())) subject = h.getValue();
-                if ("From".equalsIgnoreCase(h.getName()))    from    = h.getValue();
-            }
-
-            emails.add(new GmailDTO(from, subject, extractBody(full.getPayload()), full.getId()));
-        }
-
-        return emails;
-    }
+    return emails;
+}
 
    private Gmail getServiceParaUsuario(Usuario usuario) throws Exception {
     NetHttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();

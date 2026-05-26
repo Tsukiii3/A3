@@ -15,11 +15,41 @@ import java.util.*;
 
 @Service
 public class PhishingOrchestrator {
-    private final PhishingService          phishingService;
-    private final SafeBrowsingService      safeBrowsingService;
-    private final AiAnalyseService         aiAnalyseService;
-    private final EmailGolpistaRepository  emailRepo;
-    private final UrlPhishingRepository    urlRepo;
+
+    private final PhishingService         phishingService;
+    private final SafeBrowsingService     safeBrowsingService;
+    private final AiAnalyseService        aiAnalyseService;
+    private final EmailGolpistaRepository emailRepo;
+    private final UrlPhishingRepository   urlRepo;
+
+    // Domínios sempre confiáveis — nunca salvos como golpistas
+    private static final Set<String> TRUSTED_SENDERS_WHITELIST = Set.of(
+    // Social
+    "linkedin.com", "facebook.com", "instagram.com",
+    "twitter.com", "x.com", "youtube.com",
+    // Tech
+    "google.com", "gmail.com", "microsoft.com", "github.com",
+    "apple.com", "discord.com", "slack.com", "zoom.us",
+    // E-commerce
+    "amazon.com", "amazon.com.br", "mercadolivre.com.br",
+    "mercadopago.com.br", "shopee.com.br", "americanas.com.br",
+    // Financeiro BR
+    "nubank.com.br", "itau.com.br", "bradesco.com.br",
+    "santander.com.br", "bb.com.br", "caixa.gov.br",
+    "inter.co", "c6bank.com.br", "paypal.com",
+    // Streaming
+    "netflix.com", "spotify.com", "disneyplus.com",
+    // Serviços BR
+    "ifood.com.br", "uber.com", "99app.com",
+    "correios.com.br", "gov.br",
+    // Educação BR
+    "animaeducacao.com.br", "kroton.com.br", "cogna.com.br",
+    "anhanguera.com", "unopar.br",
+    // CDNs e infraestrutura de email legítimos
+    "licdn.com",    
+    "sendgrid.net", "amazonses.com", "mailchimp.com",
+    "klaviyo.com", "mailgun.org"
+);
 
     public PhishingOrchestrator(PhishingService p, SafeBrowsingService s,
                                 AiAnalyseService a,
@@ -31,9 +61,15 @@ public class PhishingOrchestrator {
         this.emailRepo           = emailRepo;
         this.urlRepo             = urlRepo;
     }
+
     public AnalyseDTO analisarFluxoCompleto(GmailDTO email) {
         String remetente = email.getFrom();
         String dominio   = extrairDominio(remetente);
+
+        // 0. Whitelist — domínios confiáveis nunca são bloqueados pelo banco
+        if (TRUSTED_SENDERS_WHITELIST.contains(dominio)) {
+            return phishingService.analisar(email);
+        }
 
         // 1. Consulta banco — remetente já conhecido como golpista?
         if (emailRepo.existsByRemetente(remetente)) {
@@ -71,22 +107,28 @@ public class PhishingOrchestrator {
 
         score = Math.max(0, Math.min(score, 100));
 
+        // 5. IA para casos intermediários
         if (score >= 25 && score <= 80) {
             AnalyseDTO ia = aiAnalyseService.analisarComIA(email, score, motivos);
             score = (int) (score * 0.4 + ia.getScore() * 0.6);
             score = Math.max(0, Math.min(score, 100));
             motivos.addAll(ia.getMotivos());
         }
+
         String classificacao = score < 25 ? "SEGURO"
                              : score < 55 ? "SUSPEITO"
                              : "FRAUDE";
 
-        if (!classificacao.equals("SEGURO")) {
+        // 6. Salva apenas se não for domínio confiável
+        if (!classificacao.equals("SEGURO")
+                && !TRUSTED_SENDERS_WHITELIST.contains(dominio)) {
             salvarSeNovo(email, dominio, classificacao, score, motivos);
             salvarLinksPhishing(links, classificacao);
         }
+
         return new AnalyseDTO(classificacao, score, motivos);
     }
+
     private void salvarSeNovo(GmailDTO email, String dominio, String classificacao,
                                int score, List<String> motivos) {
         try {
@@ -102,6 +144,7 @@ public class PhishingOrchestrator {
             System.out.println(">>> Erro ao salvar email: " + e.getMessage());
         }
     }
+
     private void salvarLinksPhishing(List<String> links, String classificacao) {
         if (!classificacao.equals("FRAUDE")) return;
         for (String link : links) {
@@ -115,6 +158,7 @@ public class PhishingOrchestrator {
             }
         }
     }
+
     private String extrairDominio(String from) {
         try {
             if (from.contains("@")) {
@@ -122,13 +166,20 @@ public class PhishingOrchestrator {
                                .replaceAll("[>\"'\\s]", "").trim();
                 String[] parts = d.split("\\.");
                 if (parts.length >= 2) {
-                    return parts[parts.length - 2] + "." + parts[parts.length - 1];
+                    String last2 = parts[parts.length - 2] + "." + parts[parts.length - 1];
+                    // Trata .com.br, .org.br, .gov.br
+                    if ((last2.equals("com.br") || last2.equals("org.br")
+                            || last2.equals("gov.br")) && parts.length >= 3) {
+                        return parts[parts.length - 3] + "." + last2;
+                    }
+                    return last2;
                 }
                 return d;
             }
         } catch (Exception ignored) {}
         return "";
     }
+
     private String extrairDominioDeUrl(String url) {
         try {
             String host = new URI(url).getHost();
@@ -141,6 +192,7 @@ public class PhishingOrchestrator {
             return host;
         } catch (Exception e) { return ""; }
     }
+
     @Deprecated
     public AnalyseDTO analisar(GmailDTO email) {
         return analisarFluxoCompleto(email);
