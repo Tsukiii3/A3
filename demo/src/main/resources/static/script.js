@@ -69,10 +69,20 @@ function badgePhishing(classificacao, score) {
   </span>`;
 }
 
-/* ── DATA ── */
-let allEmails = [];
-let isLoading = false;
+/* ── STATE ── */
+let allEmails     = [];
+let isLoading     = false;
+let paginaAtual   = 0;
+let temMaisEmails = false;
+let totalEmails   = 0;
+let totalNaoLidos = 0;
+let currentFolder = 'inbox';
+let openEmailId   = null;
+let selectedIds   = new Set();
+let searchQuery   = '';
+let composeMin    = false;
 
+/* ── DATA HELPERS ── */
 function parseName(from) {
   const m = from?.match(/^(.+?)\s*</);
   return m ? m[1].trim() : (from || '').replace(/<.*>/, '').trim();
@@ -100,48 +110,51 @@ function formatarData(iso) {
   } catch { return 'agora'; }
 }
 
-let paginaAtual = 0;
-let temMaisEmails = false;
+function emailDoServidor(e, folder) {
+  return {
+    id:            e.id,
+    gmailId:       e.gmailId,
+    folder:        folder || e.pasta || 'inbox',
+    from:          parseName(e.from),
+    addr:          parseAddr(e.from),
+    subject:       e.subject || '(sem assunto)',
+    preview:       e.body ? e.body.replace(/<[^>]*>/g, '').substring(0, 100) : '',
+    body:          e.body || '',
+    date:          formatarData(e.dataOriginal || e.recebidoEm),
+    unread:        !e.lido,
+    starred:       e.favorito,
+    classificacao: e.classificacao,
+    score:         e.score,
+    motivos:       e.motivos || [],
+  };
+}
 
+/* ── CARREGAR EMAILS ── */
 async function carregarEmails(pagina = 0) {
   if (isLoading) return;
   isLoading = true;
   setLoadingState(true);
 
   try {
-    const res = await apiFetch(`/api/caixa/pasta/${currentFolder}?pagina=0`);
+    // ← usa pagina recebida como parâmetro, não hardcoded
+    const res = await apiFetch(`/api/caixa/pasta/inbox?pagina=${pagina}`);
     if (!res) return;
     if (!res.ok) throw new Error('Erro ao carregar emails');
 
-    const data = await res.json();
-    const emails = data.emails || data; // compatibilidade
+    const data    = await res.json();
+    const emails  = data.emails || [];
 
-    const naoInbox = allEmails.filter(e => e.folder !== 'inbox');
-    const novosInbox = emails.map(e => ({
-      id:            e.id,
-      gmailId:       e.gmailId,
-      folder:        'inbox',
-      from:          parseName(e.from),
-      addr:          parseAddr(e.from),
-      subject:       e.subject || '(sem assunto)',
-      preview:       e.body ? e.body.replace(/<[^>]*>/g, '').substring(0, 100) : '',
-      body:          e.body || '',
-      date:          formatarData(e.dataOriginal || e.recebidoEm),
-      unread:        !e.lido,
-      starred:       e.favorito,
-      classificacao: e.classificacao,
-      score:         e.score,
-      motivos:       e.motivos || [],
-    }));
+    paginaAtual   = data.pagina   ?? 0;
+    temMaisEmails = data.temMais  ?? false;
+    totalEmails   = data.total    ?? emails.length;
+    totalNaoLidos = data.naoLidos ?? 0;
 
-    paginaAtual   = data.pagina ?? 0;
-    temMaisEmails = data.temMais ?? false;
+    const naoInbox   = allEmails.filter(e => e.folder !== 'inbox');
+    const novosInbox = emails.map(e => emailDoServidor(e, 'inbox'));
 
     allEmails = [...novosInbox, ...naoInbox];
     renderEmails();
-    refreshBadges();
-    atualizarContador(data.total, data.naoLidos);
-
+    atualizarContador();
     atualizarBotoesPagina();
 
     if (novosInbox.length > 0) {
@@ -157,14 +170,27 @@ async function carregarEmails(pagina = 0) {
   }
 }
 
-function atualizarContador(total) {
-  const inbox = allEmails.filter(e => e.folder === 'inbox');
-  const el = document.querySelector('.cat-count');
-  if (el) el.textContent = total ?? inbox.length;
+function atualizarContador() {
+  const inbox  = allEmails.filter(e => e.folder === 'inbox');
   const inicio = paginaAtual * 20 + 1;
-  const fim    = inicio + inbox.length - 1;
+  const fim    = Math.min(inicio + inbox.length - 1, totalEmails);
+
+  // Cat count (tab principal)
+  const catCount = document.querySelector('.cat-count');
+  if (catCount) catCount.textContent = totalEmails || inbox.length;
+
+  // Page info (toolbar)
   const pageInfo = document.getElementById('pageInfo');
-  if (pageInfo) pageInfo.textContent = `${inicio}–${fim} de ${total ?? inbox.length}`;
+  if (pageInfo) pageInfo.textContent = totalEmails > 0
+    ? `${inicio}–${fim} de ${totalEmails}`
+    : `0 de 0`;
+
+  // Badge sidebar inbox — usa totalNaoLidos do servidor
+  const badge = document.querySelector('.nav-item[data-folder="inbox"] .nav-badge');
+  if (badge) {
+    badge.textContent    = totalNaoLidos || '';
+    badge.style.display  = totalNaoLidos ? '' : 'none';
+  }
 }
 
 function atualizarBotoesPagina() {
@@ -182,7 +208,7 @@ async function sincronizarEmSegundoPlano() {
     const data = await res.json();
     if (data.sincronizados > 0) {
       toast(`${data.sincronizados} novo(s) email(s)`, 'info');
-      await carregarEmails();
+      await carregarEmails(paginaAtual);
     }
   } catch (err) {
     console.error('Sync em segundo plano falhou:', err);
@@ -192,7 +218,7 @@ async function sincronizarEmSegundoPlano() {
 async function carregarEmailsComRetry(tentativas = 3) {
   for (let i = 0; i < tentativas; i++) {
     try {
-      await carregarEmails();
+      await carregarEmails(0);
       return;
     } catch (err) {
       if (i < tentativas - 1) {
@@ -216,25 +242,6 @@ function setLoadingState(on) {
   } else {
     svg.style.animation = '';
     svg.style.transform = '';
-  }
-}
-
-function atualizarContador(total, naoLidos) {
-  const inbox = allEmails.filter(e => e.folder === 'inbox');
-  const el = document.querySelector('.cat-count');
-  if (el) el.textContent = total ?? inbox.length;
-
-  const inicio = paginaAtual * 20 + 1;
-  const fim    = Math.min(inicio + inbox.length - 1, total ?? inbox.length);
-  const pageInfo = document.getElementById('pageInfo');
-  if (pageInfo) pageInfo.textContent = `${inicio}–${fim} de ${total ?? inbox.length}`;
-
-  if (naoLidos !== undefined) {
-    const badge = document.querySelector('.nav-item[data-folder="inbox"] .nav-badge');
-    if (badge) {
-      badge.textContent = naoLidos || '';
-      badge.style.display = naoLidos ? '' : 'none';
-    }
   }
 }
 
@@ -272,15 +279,9 @@ function inicializarUsuario() {
     });
   }
 
-  function trocarConta() {
-    localStorage.clear();
-    window.location.href = 'login.html';
-  }
+  function trocarConta() { localStorage.clear(); window.location.href = 'login.html'; }
   function sair() {
-    if (confirm(`Sair da conta ${email}?`)) {
-      localStorage.clear();
-      window.location.href = 'login.html';
-    }
+    if (confirm(`Sair da conta ${email}?`)) { localStorage.clear(); window.location.href = 'login.html'; }
   }
 
   document.getElementById('trocarContaBtn')?.addEventListener('click', trocarConta);
@@ -288,13 +289,6 @@ function inicializarUsuario() {
   document.getElementById('settingsTrocarConta')?.addEventListener('click', trocarConta);
   document.getElementById('settingsSair')?.addEventListener('click', sair);
 }
-
-/* ── STATE ── */
-let currentFolder = 'inbox';
-let openEmailId   = null;
-let selectedIds   = new Set();
-let searchQuery   = '';
-let composeMin    = false;
 
 /* ── DERIVED ── */
 function getVisible() {
@@ -322,6 +316,7 @@ function unreadCount(folder) {
 function refreshBadges() {
   document.querySelectorAll('.nav-item[data-folder]').forEach(el => {
     const f = el.dataset.folder;
+    if (f === 'inbox') return; // inbox é gerenciado por atualizarContador
     const badge = el.querySelector('.nav-badge');
     if (!badge) return;
     const count = unreadCount(f);
@@ -442,27 +437,36 @@ async function toggleStar(id) {
 function toggleRead(id) {
   const email = allEmails.find(e=>e.id===id);
   if (!email) return;
+  const era = email.unread;
   email.unread = !email.unread;
-  renderEmails(); refreshBadges();
+  // Atualiza contador local de não lidos
+  if (era) totalNaoLidos = Math.max(0, totalNaoLidos - 1);
+  else     totalNaoLidos = totalNaoLidos + 1;
+  renderEmails(); refreshBadges(); atualizarContador();
   toast(email.unread ? 'Marcado como não lido' : 'Marcado como lido');
 }
+
 function markAsRead(id) {
   const email = allEmails.find(e=>e.id===id);
   if (email && email.unread) {
     email.unread = false;
-    refreshBadges();
+    totalNaoLidos = Math.max(0, totalNaoLidos - 1);
+    atualizarContador();
     apiFetch(`/api/caixa/${id}/lido`, { method: 'PATCH' });
   }
 }
 
 /* ── DELETE ── */
 function deleteEmail(id) {
-  const idx = allEmails.findIndex(e=>e.id===id);
+  const email = allEmails.find(e=>e.id===id);
+  const idx   = allEmails.findIndex(e=>e.id===id);
   if (idx===-1) return;
+  if (email?.unread) totalNaoLidos = Math.max(0, totalNaoLidos - 1);
+  if (email?.folder === 'inbox') totalEmails = Math.max(0, totalEmails - 1);
   allEmails.splice(idx,1);
   selectedIds.delete(id);
   if (openEmailId===id) closeViewer();
-  renderEmails(); refreshBadges();
+  renderEmails(); refreshBadges(); atualizarContador();
   apiFetch(`/api/caixa/${id}`, { method: 'DELETE' });
   toast('Mensagem excluída','danger');
 }
@@ -470,13 +474,18 @@ function deleteSelected() {
   if (!selectedIds.size) return;
   const count = selectedIds.size;
   [...selectedIds].forEach(id => {
-    const idx = allEmails.findIndex(e=>e.id===id);
-    if (idx!==-1) allEmails.splice(idx,1);
+    const email = allEmails.find(e=>e.id===id);
+    const idx   = allEmails.findIndex(e=>e.id===id);
+    if (idx!==-1) {
+      if (email?.unread) totalNaoLidos = Math.max(0, totalNaoLidos - 1);
+      if (email?.folder === 'inbox') totalEmails = Math.max(0, totalEmails - 1);
+      allEmails.splice(idx,1);
+    }
     if (openEmailId===id) closeViewer();
     apiFetch(`/api/caixa/${id}`, { method: 'DELETE' });
   });
   selectedIds.clear();
-  renderEmails(); refreshBadges();
+  renderEmails(); refreshBadges(); atualizarContador();
   toast(`${count} mensagem(s) excluída(s)`,'danger');
 }
 
@@ -484,10 +493,12 @@ function deleteSelected() {
 function archiveEmail(id) {
   const email = allEmails.find(e=>e.id===id);
   if (!email) return;
+  if (email.unread) totalNaoLidos = Math.max(0, totalNaoLidos - 1);
+  if (email.folder === 'inbox') totalEmails = Math.max(0, totalEmails - 1);
   email.folder = 'archive';
   selectedIds.delete(id);
   if (openEmailId===id) closeViewer();
-  renderEmails(); refreshBadges();
+  renderEmails(); refreshBadges(); atualizarContador();
   apiFetch(`/api/caixa/${id}/pasta`, {
     method: 'PATCH',
     body: JSON.stringify({ pasta: 'archive' })
@@ -504,8 +515,8 @@ function openEmail(email) {
   document.getElementById('viewerAddr').textContent   = `<${email.addr}>`;
   document.getElementById('viewerDate').textContent   = email.date;
 
-  const bodyEl  = document.getElementById('viewerBody');
-  const isHtml  = email.body.trim().startsWith('<');
+  const bodyEl   = document.getElementById('viewerBody');
+  const isHtml   = email.body.trim().startsWith('<');
   const bodyHtml = isHtml
     ? email.body
     : email.body.split('\n').map(l => l.trim() ? `<p>${l}</p>` : '<p>&nbsp;</p>').join('');
@@ -635,8 +646,16 @@ document.getElementById('discardBtn').addEventListener('click', ()=>{
 
 /* ── REFRESH ── */
 document.getElementById('refreshBtn').addEventListener('click', async () => {
-  await carregarEmails();
+  await carregarEmails(paginaAtual);
   sincronizarEmSegundoPlano();
+});
+
+/* ── PAGINAÇÃO ── */
+document.querySelector('.icon-btn[title="Anterior"]')?.addEventListener('click', () => {
+  if (paginaAtual > 0) carregarEmails(paginaAtual - 1);
+});
+document.querySelector('.icon-btn[title="Próximo"]')?.addEventListener('click', () => {
+  if (temMaisEmails) carregarEmails(paginaAtual + 1);
 });
 
 /* ── TOOLBAR BULK ── */
@@ -655,27 +674,26 @@ document.querySelectorAll('.nav-item[data-folder]').forEach(item=>{
     item.classList.add('active');
     currentFolder = item.dataset.folder;
 
-    if (currentFolder !== 'inbox' && currentFolder !== 'sent') {
-      apiFetch(`/api/caixa/pasta/${currentFolder}`).then(async res => {
-        if (!res || !res.ok) return;
-        const data = await res.json();
-        const outros = allEmails.filter(e => e.folder !== currentFolder);
-        const novos  = data.map(e => ({
-          id: e.id, gmailId: e.gmailId, folder: e.pasta,
-          from: parseName(e.from), addr: parseAddr(e.from),
-          subject: e.subject || '(sem assunto)',
-          preview: e.body ? e.body.replace(/<[^>]*>/g,'').substring(0,100) : '',
-          body: e.body || '',
-          date: formatarData(e.dataOriginal || e.recebidoEm),
-          unread: !e.lido, starred: e.favorito,
-          classificacao: e.classificacao, score: e.score, motivos: e.motivos || [],
-        }));
-        allEmails = [...outros, ...novos];
-        renderEmails(); refreshBadges();
-      });
-    } else {
-      selectedIds.clear(); closeViewer(); renderEmails();
+    if (currentFolder === 'inbox') {
+      selectedIds.clear(); closeViewer();
+      carregarEmails(0);
+      return;
     }
+
+    if (currentFolder === 'sent') {
+      selectedIds.clear(); closeViewer(); renderEmails();
+      return;
+    }
+
+    apiFetch(`/api/caixa/pasta/${currentFolder}?pagina=0`).then(async res => {
+      if (!res || !res.ok) return;
+      const data   = await res.json();
+      const emails = data.emails || data;
+      const outros = allEmails.filter(e => e.folder !== currentFolder);
+      const novos  = emails.map(e => emailDoServidor(e, currentFolder));
+      allEmails = [...outros, ...novos];
+      renderEmails(); refreshBadges();
+    });
   });
 });
 
@@ -747,20 +765,12 @@ document.querySelectorAll('.color-swatch').forEach(el=>{ el.addEventListener('cl
 document.getElementById('saveSettings').addEventListener('click',()=>{ applySettings(); closeSettings(); toast('Configurações salvas!','success'); });
 document.getElementById('resetSettings').addEventListener('click',()=>{ settings={dark:false,fontSize:14,density:'default',accent:'#1a73e8'}; syncSettingsUI(); applySettings(); toast('Configurações restauradas'); });
 
-document.querySelector('.icon-btn[title="Anterior"]')?.addEventListener('click', () => {
-  if (paginaAtual > 0) carregarEmails(paginaAtual - 1);
-});
-document.querySelector('.icon-btn[title="Próximo"]')?.addEventListener('click', () => {
-  if (temMaisEmails) carregarEmails(paginaAtual + 1);
-});
-
 /* ── INIT ── */
 applySettings();
 inicializarUsuario();
 allEmails = [];
 renderEmails();
 
-// Carrega do banco imediatamente, sincroniza Gmail em segundo plano
 carregarEmailsComRetry().then(() => {
   setTimeout(() => sincronizarEmSegundoPlano(), 1000);
 });
