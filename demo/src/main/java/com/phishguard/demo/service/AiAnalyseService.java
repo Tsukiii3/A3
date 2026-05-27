@@ -85,8 +85,8 @@ public class AiAnalyseService {
             String contexto = r.path("contexto").asText("");
 
             List<String> motivosIA = new ArrayList<>();
-            if (!explicacao.isBlank()) motivosIA.add("IA análise: " + explicacao);
-            if (!contexto.isBlank()) motivosIA.add("IA contexto: " + contexto);
+            if (!explicacao.isBlank()) motivosIA.add("Análise: " + explicacao);
+            if (!contexto.isBlank()) motivosIA.add("Contexto: " + contexto);
 
             // Valida classificação
             if (!List.of("SEGURO", "SUSPEITO", "FRAUDE").contains(classificacao)) {

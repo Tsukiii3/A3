@@ -16,19 +16,19 @@ import java.util.Optional;
 @Repository
 public interface EmailSalvoRepository extends JpaRepository<EmailSalvo, Long> {
 
-    // Com paginação
     List<EmailSalvo> findByUsuarioAndPastaOrderByRecebidoEmDesc(Usuario usuario, String pasta, Pageable pageable);
     List<EmailSalvo> findByUsuarioAndFavoritoTrueOrderByRecebidoEmDesc(Usuario usuario, Pageable pageable);
-
-    // Sem paginação (mantém para compatibilidade)
     List<EmailSalvo> findByUsuarioAndPastaOrderByRecebidoEmDesc(Usuario usuario, String pasta);
     List<EmailSalvo> findByUsuarioAndFavoritoTrueOrderByRecebidoEmDesc(Usuario usuario);
     List<EmailSalvo> findByUsuarioOrderByRecebidoEmDesc(Usuario usuario);
+    List<EmailSalvo> findByUsuarioAndClassificacaoIsNull(Usuario usuario);
 
     boolean existsByUsuarioAndGmailId(Usuario usuario, String gmailId);
     Optional<EmailSalvo> findByUsuarioAndId(Usuario usuario, Long id);
 
-    List<EmailSalvo> findByUsuarioAndClassificacaoIsNull(Usuario usuario);
+    long countByUsuarioAndPasta(Usuario usuario, String pasta);
+    long countByUsuarioAndFavoritoTrue(Usuario usuario);
+    long countByUsuarioAndPastaAndLidoFalse(Usuario usuario, String pasta);
 
     @Modifying
     @Transactional

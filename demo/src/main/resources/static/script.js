@@ -109,7 +109,7 @@ async function carregarEmails(pagina = 0) {
   setLoadingState(true);
 
   try {
-    const res = await apiFetch(`/api/caixa/pasta/inbox?pagina=${pagina}`);
+    const res = await apiFetch(`/api/caixa/pasta/${currentFolder}?pagina=0`);
     if (!res) return;
     if (!res.ok) throw new Error('Erro ao carregar emails');
 
@@ -140,7 +140,7 @@ async function carregarEmails(pagina = 0) {
     allEmails = [...novosInbox, ...naoInbox];
     renderEmails();
     refreshBadges();
-    atualizarContador(data.total);
+    atualizarContador(data.total, data.naoLidos);
 
     atualizarBotoesPagina();
 
@@ -219,12 +219,23 @@ function setLoadingState(on) {
   }
 }
 
-function atualizarContador() {
+function atualizarContador(total, naoLidos) {
   const inbox = allEmails.filter(e => e.folder === 'inbox');
   const el = document.querySelector('.cat-count');
-  if (el) el.textContent = inbox.length;
+  if (el) el.textContent = total ?? inbox.length;
+
+  const inicio = paginaAtual * 20 + 1;
+  const fim    = Math.min(inicio + inbox.length - 1, total ?? inbox.length);
   const pageInfo = document.getElementById('pageInfo');
-  if (pageInfo) pageInfo.textContent = `1–${inbox.length} de ${inbox.length}`;
+  if (pageInfo) pageInfo.textContent = `${inicio}–${fim} de ${total ?? inbox.length}`;
+
+  if (naoLidos !== undefined) {
+    const badge = document.querySelector('.nav-item[data-folder="inbox"] .nav-badge');
+    if (badge) {
+      badge.textContent = naoLidos || '';
+      badge.style.display = naoLidos ? '' : 'none';
+    }
+  }
 }
 
 /* ── AVATAR DO USUÁRIO LOGADO ── */

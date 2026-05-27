@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/caixa")
@@ -47,7 +48,6 @@ public class EmailController {
             if (usuario == null) return ResponseEntity.status(401)
                 .body(Map.of("erro", "Não autenticado"));
 
-            // Remove duplicatas antes de sincronizar
             emailSalvoRepo.removerDuplicatas();
 
             List<GmailDTO> emails = gmailService.buscarEmails(usuario);
@@ -61,6 +61,11 @@ public class EmailController {
 
                 AnalyseDTO analise = orchestrator.analisarFluxoCompleto(gmail);
 
+                // Deduplicar motivos
+                List<String> motivosUnicos = analise.getMotivos().stream()
+                    .distinct()
+                    .collect(Collectors.toList());
+
                 EmailSalvo salvo = new EmailSalvo(
                     usuario,
                     gmailId != null ? gmailId : UUID.randomUUID().toString(),
@@ -69,7 +74,7 @@ public class EmailController {
                 salvo.setDataOriginal(gmail.getDate());
                 salvo.setClassificacao(analise.getClassificacao());
                 salvo.setScore(analise.getScore());
-                salvo.setMotivos(analise.getMotivos());
+                salvo.setMotivos(motivosUnicos);
                 emailSalvoRepo.save(salvo);
                 novos++;
             }
@@ -82,7 +87,6 @@ public class EmailController {
         }
     }
 
-    // Lista emails por pasta com paginação
     @GetMapping("/pasta/{pasta}")
     public ResponseEntity<?> listarPorPasta(
             @PathVariable String pasta,
@@ -98,14 +102,18 @@ public class EmailController {
             ? emailSalvoRepo.findByUsuarioAndFavoritoTrueOrderByRecebidoEmDesc(usuario, pageable)
             : emailSalvoRepo.findByUsuarioAndPastaOrderByRecebidoEmDesc(usuario, pasta, pageable);
 
-        // Total para o frontend saber quantas páginas tem
         long total = pasta.equals("favoritos")
-            ? emailSalvoRepo.findByUsuarioAndFavoritoTrueOrderByRecebidoEmDesc(usuario).size()
-            : emailSalvoRepo.findByUsuarioAndPastaOrderByRecebidoEmDesc(usuario, pasta).size();
+            ? emailSalvoRepo.countByUsuarioAndFavoritoTrue(usuario)
+            : emailSalvoRepo.countByUsuarioAndPasta(usuario, pasta);
+
+        long naoLidos = pasta.equals("favoritos")
+            ? 0
+            : emailSalvoRepo.countByUsuarioAndPastaAndLidoFalse(usuario, pasta);
 
         return ResponseEntity.ok(Map.of(
             "emails",   emails.stream().map(this::toMap).toList(),
             "total",    total,
+            "naoLidos", naoLidos,
             "pagina",   pagina,
             "pageSize", PAGE_SIZE,
             "temMais",  (pagina + 1) * PAGE_SIZE < total
@@ -170,9 +178,12 @@ public class EmailController {
                     salvo.getCorpo(), salvo.getGmailId()
                 );
                 AnalyseDTO analise = orchestrator.analisarFluxoCompleto(dto);
+                List<String> motivosUnicos = analise.getMotivos().stream()
+                    .distinct()
+                    .collect(Collectors.toList());
                 salvo.setClassificacao(analise.getClassificacao());
                 salvo.setScore(analise.getScore());
-                salvo.setMotivos(analise.getMotivos());
+                salvo.setMotivos(motivosUnicos);
                 emailSalvoRepo.save(salvo);
                 atualizados++;
             }
