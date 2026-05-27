@@ -100,21 +100,24 @@ function formatarData(iso) {
   } catch { return 'agora'; }
 }
 
-/* ── CARREGAR EMAILS ── */
-async function carregarEmails() {
+let paginaAtual = 0;
+let temMaisEmails = false;
+
+async function carregarEmails(pagina = 0) {
   if (isLoading) return;
   isLoading = true;
   setLoadingState(true);
 
   try {
-    // Carrega do banco PRIMEIRO — instantâneo
-    const res = await apiFetch('/api/caixa/pasta/inbox');
+    const res = await apiFetch(`/api/caixa/pasta/inbox?pagina=${pagina}`);
     if (!res) return;
     if (!res.ok) throw new Error('Erro ao carregar emails');
 
     const data = await res.json();
+    const emails = data.emails || data; // compatibilidade
+
     const naoInbox = allEmails.filter(e => e.folder !== 'inbox');
-    const novosInbox = data.map(e => ({
+    const novosInbox = emails.map(e => ({
       id:            e.id,
       gmailId:       e.gmailId,
       folder:        'inbox',
@@ -131,10 +134,15 @@ async function carregarEmails() {
       motivos:       e.motivos || [],
     }));
 
+    paginaAtual   = data.pagina ?? 0;
+    temMaisEmails = data.temMais ?? false;
+
     allEmails = [...novosInbox, ...naoInbox];
     renderEmails();
     refreshBadges();
-    atualizarContador();
+    atualizarContador(data.total);
+
+    atualizarBotoesPagina();
 
     if (novosInbox.length > 0) {
       toast(`${novosInbox.length} email(s) carregados`, 'success');
@@ -147,6 +155,23 @@ async function carregarEmails() {
     isLoading = false;
     setLoadingState(false);
   }
+}
+
+function atualizarContador(total) {
+  const inbox = allEmails.filter(e => e.folder === 'inbox');
+  const el = document.querySelector('.cat-count');
+  if (el) el.textContent = total ?? inbox.length;
+  const inicio = paginaAtual * 20 + 1;
+  const fim    = inicio + inbox.length - 1;
+  const pageInfo = document.getElementById('pageInfo');
+  if (pageInfo) pageInfo.textContent = `${inicio}–${fim} de ${total ?? inbox.length}`;
+}
+
+function atualizarBotoesPagina() {
+  const btnAnterior = document.querySelector('.icon-btn[title="Anterior"]');
+  const btnProximo  = document.querySelector('.icon-btn[title="Próximo"]');
+  if (btnAnterior) btnAnterior.disabled = paginaAtual === 0;
+  if (btnProximo)  btnProximo.disabled  = !temMaisEmails;
 }
 
 /* ── SINCRONIZA EM SEGUNDO PLANO ── */
@@ -710,6 +735,13 @@ document.querySelectorAll('.density-opt').forEach(el=>{ el.addEventListener('cli
 document.querySelectorAll('.color-swatch').forEach(el=>{ el.addEventListener('click',()=>{ settings.accent=el.dataset.color; document.querySelectorAll('.color-swatch').forEach(x=>x.classList.remove('active')); el.classList.add('active'); applySettings(); }); });
 document.getElementById('saveSettings').addEventListener('click',()=>{ applySettings(); closeSettings(); toast('Configurações salvas!','success'); });
 document.getElementById('resetSettings').addEventListener('click',()=>{ settings={dark:false,fontSize:14,density:'default',accent:'#1a73e8'}; syncSettingsUI(); applySettings(); toast('Configurações restauradas'); });
+
+document.querySelector('.icon-btn[title="Anterior"]')?.addEventListener('click', () => {
+  if (paginaAtual > 0) carregarEmails(paginaAtual - 1);
+});
+document.querySelector('.icon-btn[title="Próximo"]')?.addEventListener('click', () => {
+  if (temMaisEmails) carregarEmails(paginaAtual + 1);
+});
 
 /* ── INIT ── */
 applySettings();

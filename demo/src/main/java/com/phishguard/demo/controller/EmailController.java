@@ -7,6 +7,8 @@ import com.phishguard.demo.service.GmailService;
 import com.phishguard.demo.Orchestrator.PhishingOrchestrator;
 import com.phishguard.demo.dto.GmailDTO;
 import com.phishguard.demo.dto.AnalyseDTO;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +19,8 @@ import java.util.*;
 @RestController
 @RequestMapping("/api/caixa")
 public class EmailController {
+
+    private static final int PAGE_SIZE = 20;
 
     private final EmailSalvoRepository emailSalvoRepo;
     private final GmailService         gmailService;
@@ -36,13 +40,15 @@ public class EmailController {
         return null;
     }
 
-    // Sincroniza emails do Gmail e salva no banco
     @PostMapping("/sincronizar")
     public ResponseEntity<?> sincronizar() {
         try {
             Usuario usuario = getUsuario();
             if (usuario == null) return ResponseEntity.status(401)
                 .body(Map.of("erro", "Não autenticado"));
+
+            // Remove duplicatas antes de sincronizar
+            emailSalvoRepo.removerDuplicatas();
 
             List<GmailDTO> emails = gmailService.buscarEmails(usuario);
             int novos = 0;
@@ -56,7 +62,8 @@ public class EmailController {
                 AnalyseDTO analise = orchestrator.analisarFluxoCompleto(gmail);
 
                 EmailSalvo salvo = new EmailSalvo(
-                    usuario, gmailId != null ? gmailId : UUID.randomUUID().toString(),
+                    usuario,
+                    gmailId != null ? gmailId : UUID.randomUUID().toString(),
                     gmail.getFrom(), gmail.getSubject(), gmail.getBody(), "inbox"
                 );
                 salvo.setDataOriginal(gmail.getDate());
@@ -75,21 +82,36 @@ public class EmailController {
         }
     }
 
-    // Lista emails por pasta
+    // Lista emails por pasta com paginação
     @GetMapping("/pasta/{pasta}")
-    public ResponseEntity<?> listarPorPasta(@PathVariable String pasta) {
+    public ResponseEntity<?> listarPorPasta(
+            @PathVariable String pasta,
+            @RequestParam(defaultValue = "0") int pagina) {
+
         Usuario usuario = getUsuario();
         if (usuario == null) return ResponseEntity.status(401)
             .body(Map.of("erro", "Não autenticado"));
 
-        List<EmailSalvo> emails = pasta.equals("favoritos")
-            ? emailSalvoRepo.findByUsuarioAndFavoritoTrueOrderByRecebidoEmDesc(usuario)
-            : emailSalvoRepo.findByUsuarioAndPastaOrderByRecebidoEmDesc(usuario, pasta);
+        Pageable pageable = PageRequest.of(pagina, PAGE_SIZE);
 
-        return ResponseEntity.ok(emails.stream().map(this::toMap).toList());
+        List<EmailSalvo> emails = pasta.equals("favoritos")
+            ? emailSalvoRepo.findByUsuarioAndFavoritoTrueOrderByRecebidoEmDesc(usuario, pageable)
+            : emailSalvoRepo.findByUsuarioAndPastaOrderByRecebidoEmDesc(usuario, pasta, pageable);
+
+        // Total para o frontend saber quantas páginas tem
+        long total = pasta.equals("favoritos")
+            ? emailSalvoRepo.findByUsuarioAndFavoritoTrueOrderByRecebidoEmDesc(usuario).size()
+            : emailSalvoRepo.findByUsuarioAndPastaOrderByRecebidoEmDesc(usuario, pasta).size();
+
+        return ResponseEntity.ok(Map.of(
+            "emails",   emails.stream().map(this::toMap).toList(),
+            "total",    total,
+            "pagina",   pagina,
+            "pageSize", PAGE_SIZE,
+            "temMais",  (pagina + 1) * PAGE_SIZE < total
+        ));
     }
 
-    // Marca como lido
     @PatchMapping("/{id}/lido")
     @Transactional
     public ResponseEntity<?> marcarLido(@PathVariable Long id) {
@@ -99,7 +121,6 @@ public class EmailController {
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
 
-    // Toggle favorito
     @PatchMapping("/{id}/favorito")
     @Transactional
     public ResponseEntity<?> toggleFavorito(@PathVariable Long id,
@@ -111,7 +132,6 @@ public class EmailController {
         return ResponseEntity.ok(Map.of("status", "ok", "favorito", favorito));
     }
 
-    // Mover para pasta (archive, trash, inbox)
     @PatchMapping("/{id}/pasta")
     @Transactional
     public ResponseEntity<?> moverPasta(@PathVariable Long id,
@@ -124,7 +144,6 @@ public class EmailController {
         return ResponseEntity.ok(Map.of("status", "ok", "pasta", pasta));
     }
 
-    // Deletar
     @DeleteMapping("/{id}")
     @Transactional
     public ResponseEntity<?> deletar(@PathVariable Long id) {
@@ -134,20 +153,51 @@ public class EmailController {
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
 
+    @PostMapping("/reanalisar")
+    public ResponseEntity<?> reanalisar() {
+        try {
+            Usuario usuario = getUsuario();
+            if (usuario == null) return ResponseEntity.status(401)
+                .body(Map.of("erro", "Não autenticado"));
+
+            List<EmailSalvo> semClassificacao = emailSalvoRepo
+                .findByUsuarioAndClassificacaoIsNull(usuario);
+
+            int atualizados = 0;
+            for (EmailSalvo salvo : semClassificacao) {
+                GmailDTO dto = new GmailDTO(
+                    salvo.getRemetente(), salvo.getAssunto(),
+                    salvo.getCorpo(), salvo.getGmailId()
+                );
+                AnalyseDTO analise = orchestrator.analisarFluxoCompleto(dto);
+                salvo.setClassificacao(analise.getClassificacao());
+                salvo.setScore(analise.getScore());
+                salvo.setMotivos(analise.getMotivos());
+                emailSalvoRepo.save(salvo);
+                atualizados++;
+            }
+
+            return ResponseEntity.ok(Map.of("reanalisados", atualizados));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("erro", e.getMessage()));
+        }
+    }
+
     private Map<String, Object> toMap(EmailSalvo e) {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("id",             e.getId());
-        m.put("gmailId",        e.getGmailId());
-        m.put("from",           e.getRemetente());
-        m.put("subject",        e.getAssunto());
-        m.put("body",           e.getCorpo());
-        m.put("pasta",          e.getPasta());
-        m.put("lido",           e.isLido());
-        m.put("favorito",       e.isFavorito());
-        m.put("classificacao",  e.getClassificacao());
-        m.put("score",          e.getScore());
-        m.put("motivos",        e.getMotivos());
-        m.put("recebidoEm",     e.getRecebidoEm().toString());
+        m.put("id",           e.getId());
+        m.put("gmailId",      e.getGmailId());
+        m.put("from",         e.getRemetente());
+        m.put("subject",      e.getAssunto());
+        m.put("body",         e.getCorpo());
+        m.put("pasta",        e.getPasta());
+        m.put("lido",         e.isLido());
+        m.put("favorito",     e.isFavorito());
+        m.put("classificacao",e.getClassificacao());
+        m.put("score",        e.getScore());
+        m.put("motivos",      e.getMotivos());
+        m.put("recebidoEm",   e.getRecebidoEm().toString());
         m.put("dataOriginal", e.getDataOriginal());
         return m;
     }

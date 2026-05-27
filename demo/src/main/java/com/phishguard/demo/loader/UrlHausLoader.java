@@ -17,6 +17,12 @@ public class UrlHausLoader {
         "https://urlhaus.abuse.ch/downloads/csv_recent/";
     private static final int BATCH_SIZE = 500;
 
+    // Domínios genéricos que não devem ser salvos
+    private static final Set<String> DOMINIOS_IGNORADOS = Set.of(
+        "com.br", "org.br", "net.br", "gov.br", "edu.br",
+        "com", "net", "org", "gov", "edu", "io", "co"
+    );
+
     private final UrlPhishingRepository urlRepo;
 
     public UrlHausLoader(UrlPhishingRepository urlRepo) {
@@ -30,7 +36,7 @@ public class UrlHausLoader {
             if (zipBytes == null) return 0;
 
             List<UrlPhishing> novas = new ArrayList<>();
-            Set<String> urlsNoBanco = new HashSet<>(urlRepo.findAllUrls()); // ← carrega tudo de uma vez
+            Set<String> urlsNoBanco = new HashSet<>(urlRepo.findAllUrls());
 
             try (ZipInputStream zis = new ZipInputStream(new ByteArrayInputStream(zipBytes))) {
                 zis.getNextEntry();
@@ -49,16 +55,17 @@ public class UrlHausLoader {
 
                     if (!status.equalsIgnoreCase("online")) continue;
                     if (url.isBlank() || !url.startsWith("http")) continue;
-                    if (urlsNoBanco.contains(url)) continue; // ← verifica em memória
+                    if (urlsNoBanco.contains(url)) continue;
 
                     String dominio = extrairDominio(url);
-                    if (dominio.isBlank()) continue;
+                    if (dominio.isBlank() || DOMINIOS_IGNORADOS.contains(dominio)) continue;
+                    if (dominio.length() < 4) continue; // evita domínios inválidos
 
                     String threat = cols.length > 5
                         ? cols[5].replace("\"", "").trim() : "URLhaus";
 
                     novas.add(new UrlPhishing(url, dominio, "URLhaus:" + threat));
-                    urlsNoBanco.add(url); // evita duplicatas dentro do próprio batch
+                    urlsNoBanco.add(url);
                 }
             }
 
@@ -99,12 +106,19 @@ public class UrlHausLoader {
         try {
             String host = new URI(url).getHost();
             if (host == null) return "";
-            host = host.replace("www.", "");
+            host = host.replace("www.", "").toLowerCase();
             String[] parts = host.split("\\.");
-            if (parts.length >= 2) {
-                return parts[parts.length - 2] + "." + parts[parts.length - 1];
+            if (parts.length < 2) return "";
+
+            String ultDois = parts[parts.length-2] + "." + parts[parts.length-1];
+            if (Set.of("com.br","org.br","net.br","gov.br","edu.br").contains(ultDois)) {
+                if (parts.length >= 3) {
+                    return parts[parts.length-3] + "." + ultDois;
+                }
+                return ""; 
             }
-            return host;
+
+            return ultDois;
         } catch (Exception e) { return ""; }
     }
 }
