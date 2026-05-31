@@ -775,7 +775,24 @@ document.getElementById('closeHelp').addEventListener('click', closeHelp);
 document.getElementById('closeHelpBtn').addEventListener('click', closeHelp);
 document.getElementById('helpOverlay').addEventListener('click', closeHelp);
 
+/* ── HELP NAV ── */
+document.getElementById('helpNavBtn')?.addEventListener('click', openHelp);
 
+/* ── SIDEBAR MOBILE ── */
+const sidebarEl  = document.querySelector('aside');
+const sidebarOvl = document.getElementById('sidebarOverlay');
+
+function toggleSidebar() {
+  sidebarEl.classList.toggle('open');
+}
+sidebarOvl?.addEventListener('click', () => sidebarEl.classList.remove('open'));
+
+// Fecha sidebar ao navegar em mobile
+document.querySelectorAll('.nav-item[data-folder]').forEach(item => {
+  item.addEventListener('click', () => {
+    if (window.innerWidth <= 768) sidebarEl.classList.remove('open');
+  });
+});
 
 
 /* ── INIT ── */
