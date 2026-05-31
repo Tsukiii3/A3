@@ -104,8 +104,7 @@ public class GmailService {
 
     return emails;
 }
-
-   private Gmail getServiceParaUsuario(Usuario usuario) throws Exception {
+private Gmail getServiceParaUsuario(Usuario usuario) throws Exception {
     NetHttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
     GoogleClientSecrets secrets = carregarSecrets();
 
@@ -118,14 +117,14 @@ public class GmailService {
     tokenResponse.setAccessToken(usuario.getGmailAccessToken());
     tokenResponse.setRefreshToken(usuario.getGmailRefreshToken());
     tokenResponse.setTokenType("Bearer");
-    tokenResponse.setExpiresInSeconds(3600L);
+    tokenResponse.setExpiresInSeconds(0L); // ← força refresh sempre
 
     Credential credential = flow.createAndStoreCredential(
         tokenResponse, usuario.getEmail());
 
-    // ← adiciona refresh automático
-    if (credential.getExpiresInSeconds() != null && credential.getExpiresInSeconds() <= 60) {
-        credential.refreshToken();
+    boolean refreshed = credential.refreshToken();
+    if (!refreshed) {
+        throw new RuntimeException("TOKEN_EXPIRADO");
     }
 
     return new Gmail.Builder(transport, JSON, credential)

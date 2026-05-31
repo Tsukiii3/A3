@@ -204,7 +204,22 @@ function atualizarBotoesPagina() {
 async function sincronizarEmSegundoPlano() {
   try {
     const res = await apiFetch('/api/caixa/sincronizar', { method: 'POST' });
-    if (!res || !res.ok) return;
+    if (!res) return;
+
+    // Token expirado — força novo login
+    if (res.status === 401) {
+      const data = await res.json().catch(() => ({}));
+      if (data.erro === 'TOKEN_EXPIRADO') {
+        toast('Sessão do Gmail expirada. Faça login novamente.', 'warning');
+        setTimeout(() => {
+          localStorage.clear();
+          window.location.href = 'login.html';
+        }, 2500);
+        return;
+      }
+    }
+
+    if (!res.ok) return;
     const data = await res.json();
     if (data.sincronizados > 0) {
       toast(`${data.sincronizados} novo(s) email(s)`, 'info');

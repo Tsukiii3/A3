@@ -78,15 +78,16 @@ public class EmailController {
                 emailSalvoRepo.save(salvo);
                 novos++;
             }
-
             return ResponseEntity.ok(Map.of("sincronizados", novos, "total", emails.size()));
-
-        } catch (Exception e) {
+       } catch (Exception e) {
+            if (e.getMessage() != null && e.getMessage().contains("TOKEN_EXPIRADO")) {
+                return ResponseEntity.status(401)
+                    .body(Map.of("erro", "TOKEN_EXPIRADO"));
+            }
             e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("erro", e.getMessage()));
-        }
+}
     }
-
     @GetMapping("/pasta/{pasta}")
     public ResponseEntity<?> listarPorPasta(
             @PathVariable String pasta,
@@ -187,7 +188,6 @@ public class EmailController {
                 emailSalvoRepo.save(salvo);
                 atualizados++;
             }
-
             return ResponseEntity.ok(Map.of("reanalisados", atualizados));
         } catch (Exception e) {
             e.printStackTrace();
