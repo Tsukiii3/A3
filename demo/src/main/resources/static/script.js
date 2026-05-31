@@ -747,8 +747,6 @@ function hexToRgba(hex,a){ const n=parseInt(hex.replace('#',''),16); return `rgb
 
 function syncSettingsUI() {
   document.getElementById('darkToggle').checked = settings.dark;
-  document.getElementById('fontSlider').value   = settings.fontSize;
-  updateFontPreview();
   document.querySelectorAll('.density-opt').forEach(el=>el.classList.toggle('active',el.dataset.density===settings.density));
   document.querySelectorAll('.color-swatch').forEach(el=>el.classList.toggle('active',el.dataset.color===settings.accent));
 }
@@ -759,11 +757,26 @@ function updateFontPreview() {
 }
 
 document.getElementById('darkToggle').addEventListener('change',e=>{ settings.dark=e.target.checked; applySettings(); });
-document.getElementById('fontSlider').addEventListener('input',e=>{ settings.fontSize=parseInt(e.target.value); updateFontPreview(); applySettings(); });
 document.querySelectorAll('.density-opt').forEach(el=>{ el.addEventListener('click',()=>{ settings.density=el.dataset.density; document.querySelectorAll('.density-opt').forEach(x=>x.classList.remove('active')); el.classList.add('active'); renderEmails(); }); });
 document.querySelectorAll('.color-swatch').forEach(el=>{ el.addEventListener('click',()=>{ settings.accent=el.dataset.color; document.querySelectorAll('.color-swatch').forEach(x=>x.classList.remove('active')); el.classList.add('active'); applySettings(); }); });
 document.getElementById('saveSettings').addEventListener('click',()=>{ applySettings(); closeSettings(); toast('Configurações salvas!','success'); });
 document.getElementById('resetSettings').addEventListener('click',()=>{ settings={dark:false,fontSize:14,density:'default',accent:'#1a73e8'}; syncSettingsUI(); applySettings(); toast('Configurações restauradas'); });
+/* ── HELP ── */
+function openHelp() {
+  document.getElementById('helpPanel').classList.add('open');
+  document.getElementById('helpOverlay').classList.add('open');
+}
+function closeHelp() {
+  document.getElementById('helpPanel').classList.remove('open');
+  document.getElementById('helpOverlay').classList.remove('open');
+}
+document.getElementById('helpBtn').addEventListener('click', openHelp);
+document.getElementById('closeHelp').addEventListener('click', closeHelp);
+document.getElementById('closeHelpBtn').addEventListener('click', closeHelp);
+document.getElementById('helpOverlay').addEventListener('click', closeHelp);
+
+
+
 
 /* ── INIT ── */
 applySettings();
