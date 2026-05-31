@@ -4,4 +4,3 @@ import com.phishguard.demo.model.UrlAnalysis;
 
 public interface UrlRepository extends JpaRepository<UrlAnalysis, Long> {
     }
-

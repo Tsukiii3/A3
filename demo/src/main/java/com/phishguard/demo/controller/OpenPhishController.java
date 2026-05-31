@@ -28,7 +28,6 @@ public class OpenPhishController {
         this.urlHausLoader      = urlHausLoader;
         this.emailGolpistaRepo  = emailGolpistaRepo;
     }
-
     @GetMapping("/stats")
     public ResponseEntity<?> stats() {
         return ResponseEntity.ok(Map.of(
@@ -36,7 +35,6 @@ public class OpenPhishController {
             "total_emails_golpistas", emailGolpistaRepo.count()
         ));
     }
-
     @PostMapping("/popular-urls")
     public ResponseEntity<?> popularUrls() {
         try {
@@ -53,7 +51,6 @@ public class OpenPhishController {
             return ResponseEntity.status(500).body(Map.of("erro", e.getMessage()));
         }
     }
-
     @PostMapping("/recarregar-openphish")
     public ResponseEntity<?> recarregarOpenPhish() {
         try {
@@ -63,7 +60,6 @@ public class OpenPhishController {
             if (feed == null || feed.isBlank()) {
                 return ResponseEntity.ok(Map.of("status", "Feed indisponível"));
             }
-
             List<UrlPhishing> batch = new ArrayList<>();
             for (String linha : feed.split("\n")) {
                 String url = linha.trim();
@@ -84,7 +80,6 @@ public class OpenPhishController {
             return ResponseEntity.status(500).body(Map.of("erro", e.getMessage()));
         }
     }
-
     @Transactional
     @DeleteMapping("/limpar-dominio")
     public ResponseEntity<?> limparDominio(@RequestParam String dominio) {
@@ -93,7 +88,6 @@ public class OpenPhishController {
         urlRepo.deleteAll(urls);
         return ResponseEntity.ok(Map.of("status", "removido", "dominio", dominio));
     }
-
     @Transactional
     @DeleteMapping("/remover-remetente")
     public ResponseEntity<?> removerRemetente(@RequestParam String email) {
@@ -103,7 +97,6 @@ public class OpenPhishController {
         }
         return ResponseEntity.ok(Map.of("status", "não encontrado"));
     }
-
     private String extrairDominio(String url) {
         try {
             String host = new URI(url).getHost();

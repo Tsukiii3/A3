@@ -17,7 +17,6 @@ public class Usuario {
     @Column(nullable = false)
     private String nome;
 
-    // Token de acesso do Gmail salvo no banco
     @Column(columnDefinition = "TEXT")
     private String gmailAccessToken;
 
@@ -37,8 +36,6 @@ public class Usuario {
         this.nome     = nome;
         this.criadoEm = LocalDateTime.now();
     }
-
-    // Getters e Setters
     public Long getId()                      { return id; }
     public String getEmail()                 { return email; }
     public String getNome()                  { return nome; }

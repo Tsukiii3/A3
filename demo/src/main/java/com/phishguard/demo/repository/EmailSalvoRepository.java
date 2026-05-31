@@ -48,6 +48,17 @@ public interface EmailSalvoRepository extends JpaRepository<EmailSalvo, Long> {
     @Modifying
     @Transactional
     @Query(value = """
+        DELETE FROM email_salvo_motivos
+        WHERE email_id NOT IN (
+            SELECT MIN(id) FROM emails_salvos
+            GROUP BY usuario_id, gmail_id
+        )
+        """, nativeQuery = true)
+    void removerMotivosDuplicatas();
+
+    @Modifying
+    @Transactional
+    @Query(value = """
         DELETE FROM emails_salvos
         WHERE id NOT IN (
             SELECT MIN(id) FROM emails_salvos

@@ -126,11 +126,9 @@ private Gmail getServiceParaUsuario(Usuario usuario) throws Exception {
     if (!refreshed) {
         throw new RuntimeException("TOKEN_EXPIRADO");
     }
-
     return new Gmail.Builder(transport, JSON, credential)
         .setApplicationName(APP_NAME).build();
 }
-
     private GoogleClientSecrets carregarSecrets() throws Exception {
         String credsJson = System.getenv("GOOGLE_CREDENTIALS");
         if (credsJson != null && !credsJson.isBlank()) {
@@ -142,7 +140,6 @@ private Gmail getServiceParaUsuario(Usuario usuario) throws Exception {
         if (in == null) throw new RuntimeException("credentials.json não encontrado!");
         return GoogleClientSecrets.load(JSON, new InputStreamReader(in));
     }
-
     private String extractBody(MessagePart payload) {
     try {
         // Tenta pegar text/html primeiro, depois text/plain
@@ -152,7 +149,6 @@ private Gmail getServiceParaUsuario(Usuario usuario) throws Exception {
         String plain = extractPart(payload, "text/plain");
         if (plain != null && !plain.isBlank()) return plain;
 
-        // Fallback direto no body
         if (payload.getBody() != null && payload.getBody().getData() != null) {
             return new String(
                 Base64.getUrlDecoder().decode(payload.getBody().getData()),
@@ -163,7 +159,6 @@ private Gmail getServiceParaUsuario(Usuario usuario) throws Exception {
     }
     return "";
 }
-
 private String extractPart(MessagePart payload, String mimeType) {
     if (mimeType.equals(payload.getMimeType())
             && payload.getBody() != null
@@ -180,7 +175,6 @@ private String extractPart(MessagePart payload, String mimeType) {
     }
     return null;
 }
-
     public record TokenInfo(
         String email,
         String nome,

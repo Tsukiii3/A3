@@ -48,6 +48,7 @@ public class EmailController {
             if (usuario == null) return ResponseEntity.status(401)
                 .body(Map.of("erro", "Não autenticado"));
 
+            emailSalvoRepo.removerMotivosDuplicatas();
             emailSalvoRepo.removerDuplicatas();
 
             List<GmailDTO> emails = gmailService.buscarEmails(usuario);
@@ -61,7 +62,6 @@ public class EmailController {
 
                 AnalyseDTO analise = orchestrator.analisarFluxoCompleto(gmail);
 
-                // Deduplicar motivos
                 List<String> motivosUnicos = analise.getMotivos().stream()
                     .distinct()
                     .collect(Collectors.toList());
@@ -78,16 +78,19 @@ public class EmailController {
                 emailSalvoRepo.save(salvo);
                 novos++;
             }
+
             return ResponseEntity.ok(Map.of("sincronizados", novos, "total", emails.size()));
-       } catch (Exception e) {
+
+        } catch (Exception e) {
             if (e.getMessage() != null && e.getMessage().contains("TOKEN_EXPIRADO")) {
                 return ResponseEntity.status(401)
                     .body(Map.of("erro", "TOKEN_EXPIRADO"));
             }
             e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of("erro", e.getMessage()));
-}
+        }
     }
+
     @GetMapping("/pasta/{pasta}")
     public ResponseEntity<?> listarPorPasta(
             @PathVariable String pasta,
@@ -125,7 +128,8 @@ public class EmailController {
     @Transactional
     public ResponseEntity<?> marcarLido(@PathVariable Long id) {
         Usuario usuario = getUsuario();
-        if (usuario == null) return ResponseEntity.status(401).body(Map.of("erro", "Não autenticado"));
+        if (usuario == null) return ResponseEntity.status(401)
+            .body(Map.of("erro", "Não autenticado"));
         emailSalvoRepo.marcarComoLido(usuario, id);
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
@@ -135,7 +139,8 @@ public class EmailController {
     public ResponseEntity<?> toggleFavorito(@PathVariable Long id,
                                              @RequestBody Map<String, Boolean> body) {
         Usuario usuario = getUsuario();
-        if (usuario == null) return ResponseEntity.status(401).body(Map.of("erro", "Não autenticado"));
+        if (usuario == null) return ResponseEntity.status(401)
+            .body(Map.of("erro", "Não autenticado"));
         boolean favorito = Boolean.TRUE.equals(body.get("favorito"));
         emailSalvoRepo.atualizarFavorito(usuario, id, favorito);
         return ResponseEntity.ok(Map.of("status", "ok", "favorito", favorito));
@@ -146,9 +151,11 @@ public class EmailController {
     public ResponseEntity<?> moverPasta(@PathVariable Long id,
                                          @RequestBody Map<String, String> body) {
         Usuario usuario = getUsuario();
-        if (usuario == null) return ResponseEntity.status(401).body(Map.of("erro", "Não autenticado"));
+        if (usuario == null) return ResponseEntity.status(401)
+            .body(Map.of("erro", "Não autenticado"));
         String pasta = body.get("pasta");
-        if (pasta == null) return ResponseEntity.badRequest().body(Map.of("erro", "Pasta obrigatória"));
+        if (pasta == null) return ResponseEntity.badRequest()
+            .body(Map.of("erro", "Pasta obrigatória"));
         emailSalvoRepo.moverParaPasta(usuario, id, pasta);
         return ResponseEntity.ok(Map.of("status", "ok", "pasta", pasta));
     }
@@ -157,7 +164,8 @@ public class EmailController {
     @Transactional
     public ResponseEntity<?> deletar(@PathVariable Long id) {
         Usuario usuario = getUsuario();
-        if (usuario == null) return ResponseEntity.status(401).body(Map.of("erro", "Não autenticado"));
+        if (usuario == null) return ResponseEntity.status(401)
+            .body(Map.of("erro", "Não autenticado"));
         emailSalvoRepo.findByUsuarioAndId(usuario, id).ifPresent(emailSalvoRepo::delete);
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
@@ -188,6 +196,7 @@ public class EmailController {
                 emailSalvoRepo.save(salvo);
                 atualizados++;
             }
+
             return ResponseEntity.ok(Map.of("reanalisados", atualizados));
         } catch (Exception e) {
             e.printStackTrace();

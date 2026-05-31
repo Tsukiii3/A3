@@ -10,15 +10,12 @@ public class LinkExtractor {
         "(?<![\\w@])[\\w\\d\\-]+\\.(?:com\\.br|com|net|org|gov|edu|io|co)(?:/[\\w\\d./?=&%\\-]*)?(?=[\\s\"'<>]|$)",
         Pattern.CASE_INSENSITIVE
     );
-
-    // Domínios de infraestrutura/namespace que não são links reais
     private static final Set<String> IGNORE_DOMAINS = Set.of(
         "w3.org", "xmlsoap.org", "schemas.microsoft.com",
         "googleapis.com", "gstatic.com", "googleusercontent.com",
         "mimecast.com", "spf.protection.outlook.com",
         "purl.org", "dublincore.org", "ogp.me"
     );
-
     public static List<String> extrairLinks(String texto) {
         if (texto == null || texto.isBlank()) return List.of();
 
@@ -34,12 +31,10 @@ public class LinkExtractor {
 
         return new ArrayList<>(links);
     }
-
     private static boolean deveIgnorar(String url) {
         String lower = url.toLowerCase();
         return IGNORE_DOMAINS.stream().anyMatch(lower::contains);
     }
-
     private static String normalizar(String url) {
         if (url == null) return null;
         url = url.trim().replaceAll("[),.;!>\"']+$", "");

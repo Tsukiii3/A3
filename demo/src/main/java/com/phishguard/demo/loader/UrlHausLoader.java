@@ -28,7 +28,6 @@ public class UrlHausLoader {
     public UrlHausLoader(UrlPhishingRepository urlRepo) {
         this.urlRepo = urlRepo;
     }
-
     public int carregar() {
         try {
             RestTemplate rest = new RestTemplate();
@@ -68,7 +67,6 @@ public class UrlHausLoader {
                     urlsNoBanco.add(url);
                 }
             }
-
             if (novas.isEmpty()) return 0;
 
             for (int i = 0; i < novas.size(); i += BATCH_SIZE) {
@@ -82,7 +80,6 @@ public class UrlHausLoader {
             return 0;
         }
     }
-
     private String[] parseCsvLine(String linha) {
         List<String> cols   = new ArrayList<>();
         StringBuilder campo = new StringBuilder();
@@ -101,7 +98,6 @@ public class UrlHausLoader {
         cols.add(campo.toString());
         return cols.toArray(new String[0]);
     }
-
     private String extrairDominio(String url) {
         try {
             String host = new URI(url).getHost();
@@ -117,7 +113,6 @@ public class UrlHausLoader {
                 }
                 return ""; 
             }
-
             return ultDois;
         } catch (Exception e) { return ""; }
     }

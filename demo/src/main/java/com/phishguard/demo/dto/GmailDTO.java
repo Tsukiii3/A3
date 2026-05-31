@@ -12,14 +12,12 @@ public class GmailDTO {
         this.subject = subject;
         this.body    = body;
     }
-
     public GmailDTO(String from, String subject, String body, String gmailId) {
         this.from    = from;
         this.subject = subject;
         this.body    = body;
         this.gmailId = gmailId;
     }
-
     public String getFrom()       { return from; }
     public String getSubject()    { return subject; }
     public String getBody()       { return body; }

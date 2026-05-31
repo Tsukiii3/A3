@@ -88,7 +88,6 @@ public class AiAnalyseService {
             if (!explicacao.isBlank()) motivosIA.add("Análise: " + explicacao);
             if (!contexto.isBlank()) motivosIA.add("Contexto: " + contexto);
 
-            // Valida classificação
             if (!List.of("SEGURO", "SUSPEITO", "FRAUDE").contains(classificacao)) {
                 classificacao = "SUSPEITO";
             }
@@ -100,7 +99,6 @@ public class AiAnalyseService {
             return new AnalyseDTO("SUSPEITO", scoreFallback, motivosFallback);
         }
     }
-
     private String buildSystemPrompt() {
         return """
         Você é um especialista sênior em segurança cibernética especializado em detecção de phishing e engenharia social.
@@ -120,7 +118,6 @@ public class AiAnalyseService {
         Responda APENAS com JSON puro, sem markdown, sem texto fora do JSON.
         """;
     }
-
     private String buildPrompt(GmailDTO email, int score, List<String> motivos) {
         return """
         Analise este email quanto ao risco de phishing:

@@ -55,7 +55,6 @@ public void run(ApplicationArguments args) {
                 novas.add(new UrlPhishing(url, dominio, "OpenPhish"));
             }
         }
-
         if (novas.isEmpty()) return 0;
 
         for (int i = 0; i < novas.size(); i += BATCH_SIZE) {

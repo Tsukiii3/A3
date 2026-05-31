@@ -68,7 +68,6 @@ public class EmailSalvo {
         this.pasta     = pasta;
         this.recebidoEm = LocalDateTime.now();
     }
-
     public Long getId()                    { return id; }
     public Usuario getUsuario()            { return usuario; }
     public String getGmailId()             { return gmailId; }

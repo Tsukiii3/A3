@@ -100,7 +100,6 @@ public class PhishingOrchestrator {
                 }
             }
         }
-
         score = Math.max(0, Math.min(score, 100));
 
         if (score >= 25 && score <= 80) {
@@ -109,7 +108,6 @@ public class PhishingOrchestrator {
             score = Math.max(0, Math.min(score, 100));
             motivos.addAll(ia.getMotivos());
         }
-
         String classificacao = score < 25 ? "SEGURO"
                              : score < 55 ? "SUSPEITO"
                              : "FRAUDE";
@@ -120,15 +118,12 @@ public class PhishingOrchestrator {
             salvarSeNovo(email, dominio, classificacao, score, motivos);
             salvarLinksPhishing(links);
         }
-
         return new AnalyseDTO(classificacao, score, motivos);
     }
-
     private boolean isLinkConfiavel(String dominio) {
         return LINK_WHITELIST.stream().anyMatch(d ->
             dominio.equals(d) || dominio.endsWith("." + d));
     }
-
     private void salvarSeNovo(GmailDTO email, String dominio, String classificacao,
                                int score, List<String> motivos) {
         try {
@@ -143,7 +138,6 @@ public class PhishingOrchestrator {
             System.out.println(">>> Erro ao salvar email: " + e.getMessage());
         }
     }
-
     private void salvarLinksPhishing(List<String> links) {
         for (String link : links) {
             try {
@@ -157,7 +151,6 @@ public class PhishingOrchestrator {
             }
         }
     }
-
     private String extrairDominio(String from) {
         try {
             if (from.contains("@")) {
@@ -177,7 +170,6 @@ public class PhishingOrchestrator {
         } catch (Exception ignored) {}
         return "";
     }
-
     private String extrairDominioDeUrl(String url) {
         try {
             String host = new URI(url).getHost();
@@ -190,7 +182,6 @@ public class PhishingOrchestrator {
             return host;
         } catch (Exception e) { return ""; }
     }
-
     @Deprecated
     public AnalyseDTO analisar(GmailDTO email) {
         return analisarFluxoCompleto(email);

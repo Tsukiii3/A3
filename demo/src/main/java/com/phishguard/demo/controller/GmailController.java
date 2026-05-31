@@ -37,8 +37,6 @@ public class GmailController {
                 return ResponseEntity.status(401)
                     .body(Map.of("erro", "Não autenticado"));
             }
-
-            // ← sempre usa o token do usuário logado, nunca o fluxo local
             if (usuario.getGmailAccessToken() == null
                     || usuario.getGmailAccessToken().isBlank()) {
                 return ResponseEntity.status(400)
@@ -54,23 +52,20 @@ public class GmailController {
                 item.put("from",          email.getFrom());
                 item.put("subject",       email.getSubject());
                 item.put("body",          email.getBody());
-                item.put("date",          email.getDate()); // ← data real
+                item.put("date",          email.getDate()); 
                 item.put("gmailId",       email.getGmailId());
                 item.put("classificacao", r.getClassificacao());
                 item.put("score",         r.getScore());
                 item.put("motivos",       r.getMotivos());
                 resp.add(item);
             }
-
             return ResponseEntity.ok(resp);
-
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500)
                 .body(Map.of("erro", e.getMessage()));
         }
     }
-
     @PostMapping("/enviar")
     public ResponseEntity<?> enviar(@RequestBody Map<String, String> body) {
         try {
@@ -79,7 +74,6 @@ public class GmailController {
                 return ResponseEntity.status(401)
                     .body(Map.of("erro", "Não autenticado"));
             }
-
             String para    = body.get("para");
             String assunto = body.get("assunto");
             String corpo   = body.get("corpo");
@@ -88,10 +82,8 @@ public class GmailController {
                 return ResponseEntity.badRequest()
                     .body(Map.of("erro", "Campos obrigatórios ausentes"));
             }
-
             gmailService.enviarEmail(usuario, para, assunto, corpo);
             return ResponseEntity.ok(Map.of("status", "enviado"));
-
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500)
