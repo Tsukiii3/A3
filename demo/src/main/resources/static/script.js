@@ -69,24 +69,6 @@ function badgePhishing(classificacao, score) {
   </span>`;
 }
 
-/* ── CLASSIFICAÇÃO NA LISTA (sem score, só ícone+label) ── */
-function badgePhishingLista(classificacao) {
-  if (!classificacao || classificacao === 'SEGURO') return '';
-  const cfg = {
-    SUSPEITO: { bg: '#fff8e1', color: '#b06000', icon: '⚠', label: 'Suspeito' },
-    FRAUDE:   { bg: '#fff8e1', color: '#b06000', icon: '⚠', label: 'Fraude' },
-  }[classificacao];
-  if (!cfg) return '';
-  return `<span style="
-    display:inline-flex;align-items:center;gap:3px;
-    background:${cfg.bg};color:${cfg.color};
-    font-size:10px;font-weight:600;
-    padding:1px 6px;border-radius:10px;
-    margin-left:6px;vertical-align:middle;flex-shrink:0;">
-    ${cfg.icon} ${cfg.label}
-  </span>`;
-}
-
 /* ── STATE ── */
 let allEmails     = [];
 let isLoading     = false;
@@ -105,14 +87,14 @@ function parseName(from) {
   const m = from?.match(/^(.+?)\s*</);
   return m ? m[1].trim() : (from || '').replace(/<.*>/, '').trim();
 }
+
 function parseAddr(from) {
   const m = from?.match(/<(.+?)>/);
   return m ? m[1] : (from || '');
 }
 
-/* ── FIX 4: data correta priorizando dataOriginal do Gmail ── */
 function formatarData(iso) {
-  if (!iso) return '';
+  if (!iso) return 'agora';
   try {
     const limpo = iso.replace(/\s*\([^)]*\)\s*$/, '').trim();
     const d = new Date(limpo);
@@ -125,12 +107,10 @@ function formatarData(iso) {
     if (d.getFullYear() === hoje.getFullYear())
       return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
     return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
-  } catch { return ''; }
+  } catch { return 'agora'; }
 }
 
 function emailDoServidor(e, folder) {
-  // Prioriza dataOriginal (data real do Gmail), fallback para recebidoEm
-  const dataReal = e.dataOriginal || e.recebidoEm || '';
   return {
     id:            e.id,
     gmailId:       e.gmailId,
@@ -140,8 +120,7 @@ function emailDoServidor(e, folder) {
     subject:       e.subject || '(sem assunto)',
     preview:       e.body ? e.body.replace(/<[^>]*>/g, '').substring(0, 100) : '',
     body:          e.body || '',
-    date:          formatarData(dataReal),
-    dateRaw:       dataReal, // guarda para ordenação
+    date:          formatarData(e.dataOriginal || e.recebidoEm),
     unread:        !e.lido,
     starred:       e.favorito,
     classificacao: e.classificacao,
@@ -157,12 +136,13 @@ async function carregarEmails(pagina = 0) {
   setLoadingState(true);
 
   try {
+    // ← usa pagina recebida como parâmetro, não hardcoded
     const res = await apiFetch(`/api/caixa/pasta/inbox?pagina=${pagina}`);
     if (!res) return;
     if (!res.ok) throw new Error('Erro ao carregar emails');
 
-    const data   = await res.json();
-    const emails = data.emails || [];
+    const data    = await res.json();
+    const emails  = data.emails || [];
 
     paginaAtual   = data.pagina   ?? 0;
     temMaisEmails = data.temMais  ?? false;
@@ -170,20 +150,16 @@ async function carregarEmails(pagina = 0) {
     totalNaoLidos = data.naoLidos ?? 0;
 
     const naoInbox   = allEmails.filter(e => e.folder !== 'inbox');
-    let novosInbox   = emails.map(e => emailDoServidor(e, 'inbox'));
-
-    // FIX 4: ordena mais recente primeiro
-    novosInbox.sort((a, b) => {
-      const da = new Date(a.dateRaw || 0);
-      const db = new Date(b.dateRaw || 0);
-      return db - da;
-    });
+    const novosInbox = emails.map(e => emailDoServidor(e, 'inbox'));
 
     allEmails = [...novosInbox, ...naoInbox];
     renderEmails();
     atualizarContador();
     atualizarBotoesPagina();
-    // FIX 1: remove toast de "X emails carregados"
+
+    if (novosInbox.length > 0) {
+      toast(`${novosInbox.length} email(s) carregados`, 'success');
+    }
 
   } catch (err) {
     console.error(err);
@@ -199,17 +175,21 @@ function atualizarContador() {
   const inicio = paginaAtual * 20 + 1;
   const fim    = Math.min(inicio + inbox.length - 1, totalEmails);
 
+  // Cat count (tab principal)
   const catCount = document.querySelector('.cat-count');
   if (catCount) catCount.textContent = totalEmails || inbox.length;
 
+  // Page info (toolbar)
   const pageInfo = document.getElementById('pageInfo');
   if (pageInfo) pageInfo.textContent = totalEmails > 0
-    ? `${inicio}–${fim} de ${totalEmails}` : `0 de 0`;
+    ? `${inicio}–${fim} de ${totalEmails}`
+    : `0 de 0`;
 
+  // Badge sidebar inbox — usa totalNaoLidos do servidor
   const badge = document.querySelector('.nav-item[data-folder="inbox"] .nav-badge');
   if (badge) {
-    badge.textContent   = totalNaoLidos || '';
-    badge.style.display = totalNaoLidos ? '' : 'none';
+    badge.textContent    = totalNaoLidos || '';
+    badge.style.display  = totalNaoLidos ? '' : 'none';
   }
 }
 
@@ -226,11 +206,15 @@ async function sincronizarEmSegundoPlano() {
     const res = await apiFetch('/api/caixa/sincronizar', { method: 'POST' });
     if (!res) return;
 
+    // Token expirado — força novo login
     if (res.status === 401) {
       const data = await res.json().catch(() => ({}));
       if (data.erro === 'TOKEN_EXPIRADO') {
         toast('Sessão do Gmail expirada. Faça login novamente.', 'warning');
-        setTimeout(() => { localStorage.clear(); window.location.href = 'login.html'; }, 2500);
+        setTimeout(() => {
+          localStorage.clear();
+          window.location.href = 'login.html';
+        }, 2500);
         return;
       }
     }
@@ -238,7 +222,6 @@ async function sincronizarEmSegundoPlano() {
     if (!res.ok) return;
     const data = await res.json();
     if (data.sincronizados > 0) {
-      // FIX 1: só mostra toast se há novos emails, não no carregamento inicial
       toast(`${data.sincronizados} novo(s) email(s)`, 'info');
       await carregarEmails(paginaAtual);
     }
@@ -348,7 +331,7 @@ function unreadCount(folder) {
 function refreshBadges() {
   document.querySelectorAll('.nav-item[data-folder]').forEach(el => {
     const f = el.dataset.folder;
-    if (f === 'inbox') return;
+    if (f === 'inbox') return; // inbox é gerenciado por atualizarContador
     const badge = el.querySelector('.nav-badge');
     if (!badge) return;
     const count = unreadCount(f);
@@ -380,8 +363,7 @@ function renderEmails(list) {
     row.dataset.id = email.id;
     row.style.height = rowH;
 
-    // FIX 3: badge na linha da lista (só suspeito/fraude)
-    const phishBadgeLista = badgePhishingLista(email.classificacao);
+    const phishBadge = email.classificacao ? badgePhishing(email.classificacao, email.score) : '';
 
     row.innerHTML = `
       <div class="row-check">
@@ -396,7 +378,7 @@ function renderEmails(list) {
       </div>
       <div class="row-sender">${email.from}</div>
       <div class="row-body">
-        <span class="row-subject">${email.subject}${phishBadgeLista}</span>
+        <span class="row-subject">${email.subject}${phishBadge}</span>
         <span class="row-preview">— ${email.preview}</span>
       </div>
       <div class="row-meta">
@@ -472,11 +454,13 @@ function toggleRead(id) {
   if (!email) return;
   const era = email.unread;
   email.unread = !email.unread;
+  // Atualiza contador local de não lidos
   if (era) totalNaoLidos = Math.max(0, totalNaoLidos - 1);
   else     totalNaoLidos = totalNaoLidos + 1;
   renderEmails(); refreshBadges(); atualizarContador();
   toast(email.unread ? 'Marcado como não lido' : 'Marcado como lido');
 }
+
 function markAsRead(id) {
   const email = allEmails.find(e=>e.id===id);
   if (email && email.unread) {
@@ -530,7 +514,10 @@ function archiveEmail(id) {
   selectedIds.delete(id);
   if (openEmailId===id) closeViewer();
   renderEmails(); refreshBadges(); atualizarContador();
-  apiFetch(`/api/caixa/${id}/pasta`, { method: 'PATCH', body: JSON.stringify({ pasta: 'archive' }) });
+  apiFetch(`/api/caixa/${id}/pasta`, {
+    method: 'PATCH',
+    body: JSON.stringify({ pasta: 'archive' })
+  });
   toast('Mensagem arquivada');
 }
 
@@ -690,6 +677,7 @@ document.querySelector('.icon-btn[title="Próximo"]')?.addEventListener('click',
 document.querySelectorAll('.tb-btn').forEach(btn=>{
   const t = btn.textContent.trim();
   if(t==='Excluir') btn.addEventListener('click', deleteSelected);
+  if(t==='Arquivo') btn.addEventListener('click', ()=>{ if(!selectedIds.size) return; const c=selectedIds.size; [...selectedIds].forEach(id=>archiveEmail(id)); selectedIds.clear(); toast(`${c} mensagem(s) arquivada(s)`); });
   if(t==='Spam')    btn.addEventListener('click', ()=>{ if(!selectedIds.size&&!openEmailId){toast('Selecione uma mensagem','warning');return;} [...selectedIds].forEach(id=>deleteEmail(id)); if(openEmailId) deleteEmail(openEmailId); toast('Marcado como spam','warning'); });
   if(t==='Filtrar') btn.addEventListener('click', ()=>toast('Filtros em breve','info'));
 });
@@ -701,13 +689,14 @@ document.querySelectorAll('.nav-item[data-folder]').forEach(item=>{
     item.classList.add('active');
     currentFolder = item.dataset.folder;
 
-    if (window.innerWidth <= 768) {
-      document.getElementById('sidebar')?.classList.remove('open');
-    }
-
     if (currentFolder === 'inbox') {
       selectedIds.clear(); closeViewer();
       carregarEmails(0);
+      return;
+    }
+
+    if (currentFolder === 'sent') {
+      selectedIds.clear(); closeViewer(); renderEmails();
       return;
     }
 
@@ -752,12 +741,14 @@ function closeSettings() {
   document.getElementById('settingsPanel').classList.remove('open');
   document.getElementById('settingsOverlay').classList.remove('open');
 }
+
 document.getElementById('settingsBtn').addEventListener('click', openSettings);
 document.getElementById('closeSettings').addEventListener('click', closeSettings);
 document.getElementById('settingsOverlay').addEventListener('click', closeSettings);
 
 function applySettings() {
   document.body.classList.toggle('dark', settings.dark);
+  document.documentElement.style.setProperty('--font-size', settings.fontSize+'px');
   const acc = settings.accent;
   document.documentElement.style.setProperty('--accent', acc);
   document.documentElement.style.setProperty('--accent-hover', shadeColor(acc,-20));
@@ -774,13 +765,17 @@ function syncSettingsUI() {
   document.querySelectorAll('.density-opt').forEach(el=>el.classList.toggle('active',el.dataset.density===settings.density));
   document.querySelectorAll('.color-swatch').forEach(el=>el.classList.toggle('active',el.dataset.color===settings.accent));
 }
+function updateFontPreview() {
+  const sz = document.getElementById('fontSlider').value;
+  const p  = document.getElementById('fontPreview');
+  if (p) p.style.fontSize = sz + 'px';
+}
 
 document.getElementById('darkToggle').addEventListener('change',e=>{ settings.dark=e.target.checked; applySettings(); });
 document.querySelectorAll('.density-opt').forEach(el=>{ el.addEventListener('click',()=>{ settings.density=el.dataset.density; document.querySelectorAll('.density-opt').forEach(x=>x.classList.remove('active')); el.classList.add('active'); renderEmails(); }); });
 document.querySelectorAll('.color-swatch').forEach(el=>{ el.addEventListener('click',()=>{ settings.accent=el.dataset.color; document.querySelectorAll('.color-swatch').forEach(x=>x.classList.remove('active')); el.classList.add('active'); applySettings(); }); });
 document.getElementById('saveSettings').addEventListener('click',()=>{ applySettings(); closeSettings(); toast('Configurações salvas!','success'); });
 document.getElementById('resetSettings').addEventListener('click',()=>{ settings={dark:false,fontSize:14,density:'default',accent:'#1a73e8'}; syncSettingsUI(); applySettings(); toast('Configurações restauradas'); });
-
 /* ── HELP ── */
 function openHelp() {
   document.getElementById('helpPanel').classList.add('open');
@@ -794,26 +789,26 @@ document.getElementById('helpBtn').addEventListener('click', openHelp);
 document.getElementById('closeHelp').addEventListener('click', closeHelp);
 document.getElementById('closeHelpBtn').addEventListener('click', closeHelp);
 document.getElementById('helpOverlay').addEventListener('click', closeHelp);
+
+/* ── HELP NAV ── */
 document.getElementById('helpNavBtn')?.addEventListener('click', openHelp);
 
-/* ── FIX 2: SIDEBAR MOBILE com botão hamburguer ── */
-const sidebarEl  = document.getElementById('sidebar');
+/* ── SIDEBAR MOBILE ── */
+const sidebarEl  = document.querySelector('aside');
 const sidebarOvl = document.getElementById('sidebarOverlay');
-const menuBtn    = document.getElementById('menuBtn');
 
 function toggleSidebar() {
-  sidebarEl?.classList.toggle('open');
+  sidebarEl.classList.toggle('open');
 }
+sidebarOvl?.addEventListener('click', () => sidebarEl.classList.remove('open'));
 
-menuBtn?.addEventListener('click', toggleSidebar);
-sidebarOvl?.addEventListener('click', () => sidebarEl?.classList.remove('open'));
+// Fecha sidebar ao navegar em mobile
+document.querySelectorAll('.nav-item[data-folder]').forEach(item => {
+  item.addEventListener('click', () => {
+    if (window.innerWidth <= 768) sidebarEl.classList.remove('open');
+  });
+});
 
-// Mostra/esconde botão hamburguer conforme tamanho da tela
-function checkMobile() {
-  if (menuBtn) menuBtn.style.display = window.innerWidth <= 768 ? 'flex' : 'none';
-}
-checkMobile();
-window.addEventListener('resize', checkMobile);
 
 /* ── INIT ── */
 applySettings();
