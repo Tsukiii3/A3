@@ -8,6 +8,10 @@
 </head>
 <body>
 <header>
+  <!-- Botão hamburguer só no mobile -->
+  <button class="icon-btn" id="menuBtn" style="display:none;margin-left:8px;" title="Menu">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
   <div class="header-logo">
     <div class="logo-icon">✉</div>
     <span class="logo-name">Phis<span>Guard</span></span>
@@ -25,7 +29,6 @@
     <button class="icon-btn" id="settingsBtn" title="Configurações">
       <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
-
     <div style="position:relative;">
       <div class="avatar" id="avatarBtn" title="Conta" style="cursor:pointer;">JD</div>
       <div id="accountDropdown" style="
@@ -38,17 +41,11 @@
           <div id="dropdownEmail" style="font-size:12px;color:var(--text-muted);margin-top:2px;"></div>
         </div>
         <div style="height:1px;background:var(--border);margin:0 4px 8px;"></div>
-        <button id="trocarContaBtn" style="
-          width:100%;text-align:left;padding:8px 12px;border-radius:8px;
-          background:none;border:none;cursor:pointer;font-size:13px;
-          color:var(--text-primary);display:flex;align-items:center;gap:8px;">
+        <button id="trocarContaBtn" style="width:100%;text-align:left;padding:8px 12px;border-radius:8px;background:none;border:none;cursor:pointer;font-size:13px;color:var(--text-primary);display:flex;align-items:center;gap:8px;">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/></svg>
           Trocar de conta
         </button>
-        <button id="sairBtn" style="
-          width:100%;text-align:left;padding:8px 12px;border-radius:8px;
-          background:none;border:none;cursor:pointer;font-size:13px;
-          color:var(--danger);display:flex;align-items:center;gap:8px;">
+        <button id="sairBtn" style="width:100%;text-align:left;padding:8px 12px;border-radius:8px;background:none;border:none;cursor:pointer;font-size:13px;color:var(--danger);display:flex;align-items:center;gap:8px;">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           Sair
         </button>
@@ -58,7 +55,7 @@
 </header>
 
 <div class="app-body">
-  <aside>
+  <aside id="sidebar">
     <button class="compose-btn" id="composeBtn">
       <span class="compose-icon">
         <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -75,6 +72,11 @@
         <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         Com estrela
         <span class="nav-badge" style="display:none"></span>
+      </div>
+      <!-- Ajuda na sidebar -->
+      <div class="nav-item nav-help" id="helpNavBtn">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+        Ajuda
       </div>
     </nav>
   </aside>
@@ -192,7 +194,6 @@
 </div>
 
 <div class="settings-overlay" id="settingsOverlay"></div>
-
 <div class="settings-panel" id="settingsPanel">
   <div class="settings-header">
     <button class="icon-btn" id="closeSettings">
@@ -200,12 +201,9 @@
     </button>
     <h2>Configurações</h2>
   </div>
-
   <div class="settings-body">
-
     <div class="settings-section">
       <div class="settings-section-title">Aparência</div>
-
       <div class="settings-row">
         <div>
           <div class="settings-label">Modo escuro</div>
@@ -216,32 +214,21 @@
           <div class="toggle-track"></div>
         </label>
       </div>
-
       <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
         <div class="settings-label">Densidade</div>
         <div class="settings-desc">Altura das linhas na lista de e-mails</div>
         <div class="density-opts">
-          <div class="density-opt" data-density="compact">
-            <div class="density-opt-icon">▬▬▬</div>
-            Compacta
-          </div>
-          <div class="density-opt active" data-density="default">
-            <div class="density-opt-icon">▬▬</div>
-            Padrão
-          </div>
-          <div class="density-opt" data-density="comfortable">
-            <div class="density-opt-icon">▬</div>
-            Espaçada
-          </div>
+          <div class="density-opt" data-density="compact"><div class="density-opt-icon">▬▬▬</div>Compacta</div>
+          <div class="density-opt active" data-density="default"><div class="density-opt-icon">▬▬</div>Padrão</div>
+          <div class="density-opt" data-density="comfortable"><div class="density-opt-icon">▬</div>Espaçada</div>
         </div>
       </div>
     </div>
-
     <div class="settings-section">
       <div class="settings-section-title">Cor de destaque</div>
       <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
         <div class="settings-desc">Cor usada em botões, links e itens ativos</div>
-        <div class="color-opts" id="colorOpts">
+        <div class="color-opts">
           <div class="color-swatch active" data-color="#1a73e8" style="background:#1a73e8" title="Azul"></div>
           <div class="color-swatch" data-color="#1e8e3e" style="background:#1e8e3e" title="Verde"></div>
           <div class="color-swatch" data-color="#9c27b0" style="background:#9c27b0" title="Roxo"></div>
@@ -253,30 +240,21 @@
         </div>
       </div>
     </div>
-
     <div class="settings-section">
       <div class="settings-section-title">Conta</div>
       <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:8px;">
         <div id="settingsAccountInfo" style="font-size:13px;color:var(--text-secondary);"></div>
-        <button id="settingsTrocarConta" style="
-          padding:8px 16px;border-radius:8px;border:1px solid var(--border);
-          background:var(--surface);color:var(--text-primary);
-          font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;">
+        <button id="settingsTrocarConta" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text-primary);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7"/></svg>
           Trocar de conta
         </button>
-        <button id="settingsSair" style="
-          padding:8px 16px;border-radius:8px;border:1px solid var(--border);
-          background:var(--surface);color:var(--danger);
-          font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;">
+        <button id="settingsSair" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--danger);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           Sair
         </button>
       </div>
     </div>
-
   </div>
-
   <div class="settings-footer">
     <button class="btn-settings-reset" id="resetSettings">Restaurar padrões</button>
     <button class="btn-settings-save" id="saveSettings">Salvar</button>
@@ -284,7 +262,6 @@
 </div>
 
 <div class="settings-overlay" id="helpOverlay"></div>
-
 <div class="settings-panel" id="helpPanel">
   <div class="settings-header">
     <button class="icon-btn" id="closeHelp">
@@ -292,18 +269,14 @@
     </button>
     <h2>Ajuda</h2>
   </div>
-
   <div class="settings-body">
     <div class="settings-section">
       <div class="settings-section-title" style="display:flex;align-items:center;gap:8px;">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         O que é Phishing?
       </div>
-
       <div style="font-size:13px;color:var(--text-secondary);line-height:1.7;display:flex;flex-direction:column;gap:12px;">
-
         <p>Phishing é uma técnica de golpe digital em que criminosos se passam por empresas, bancos ou pessoas de confiança para enganar você e roubar dados pessoais, senhas ou dinheiro.</p>
-
         <div style="background:var(--accent-light);border-left:3px solid var(--accent);border-radius:6px;padding:12px 14px;">
           <strong style="color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:.5px;">Como identificar</strong>
           <ul style="margin:8px 0 0;padding-left:16px;display:flex;flex-direction:column;gap:6px;">
@@ -314,7 +287,6 @@
             <li>Erros de português ou formatação estranha</li>
           </ul>
         </div>
-
         <div style="background:var(--hover-bg);border-radius:6px;padding:12px 14px;">
           <strong style="font-size:12px;color:var(--text-primary);text-transform:uppercase;letter-spacing:.5px;">Como o PhishGuard te protege</strong>
           <ul style="margin:8px 0 0;padding-left:16px;display:flex;flex-direction:column;gap:6px;">
@@ -324,20 +296,18 @@
             <li>Classifica emails como <strong>Seguro</strong>, <strong>Suspeito</strong> ou <strong>Possível fraude</strong></li>
           </ul>
         </div>
-
         <div style="background:#fff8e1;border-radius:6px;padding:12px 14px;border-left:3px solid #fbbc04;">
           <strong style="font-size:12px;color:#b06000;text-transform:uppercase;letter-spacing:.5px;">⚠ Dica importante</strong>
           <p style="margin:6px 0 0;">Nunca clique em links ou baixe anexos de emails classificados como suspeitos ou fraude. Em caso de dúvida, acesse o site da empresa diretamente pelo navegador.</p>
         </div>
-
       </div>
     </div>
   </div>
-
   <div class="settings-footer" style="justify-content:flex-end;">
     <button class="btn-settings-save" id="closeHelpBtn">Entendido</button>
   </div>
 </div>
+
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 <script src="script.js"></script>
 </body>
