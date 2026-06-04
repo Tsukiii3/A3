@@ -30,6 +30,11 @@ public interface EmailSalvoRepository extends JpaRepository<EmailSalvo, Long> {
     long countByUsuarioAndFavoritoTrue(Usuario usuario);
     long countByUsuarioAndPastaAndLidoFalse(Usuario usuario, String pasta);
 
+    // ← filtros por classificação
+    List<EmailSalvo> findByUsuarioAndClassificacaoOrderByRecebidoEmDesc(
+        Usuario usuario, String classificacao, Pageable pageable);
+    long countByUsuarioAndClassificacao(Usuario usuario, String classificacao);
+
     @Modifying
     @Transactional
     @Query("UPDATE EmailSalvo e SET e.lido = true WHERE e.usuario = :usuario AND e.id = :id")

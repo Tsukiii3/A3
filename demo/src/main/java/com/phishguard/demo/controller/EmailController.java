@@ -90,6 +90,32 @@ public class EmailController {
             return ResponseEntity.status(500).body(Map.of("erro", e.getMessage()));
         }
     }
+    @GetMapping("/classificacao/{classificacao}")
+public ResponseEntity<?> listarPorClassificacao(
+        @PathVariable String classificacao,
+        @RequestParam(defaultValue = "0") int pagina) {
+
+    Usuario usuario = getUsuario();
+    if (usuario == null) return ResponseEntity.status(401)
+        .body(Map.of("erro", "Não autenticado"));
+
+    Pageable pageable = PageRequest.of(pagina, PAGE_SIZE);
+
+    List<EmailSalvo> emails = emailSalvoRepo
+        .findByUsuarioAndClassificacaoOrderByRecebidoEmDesc(
+            usuario, classificacao.toUpperCase(), pageable);
+
+    long total = emailSalvoRepo.countByUsuarioAndClassificacao(
+        usuario, classificacao.toUpperCase());
+
+    return ResponseEntity.ok(Map.of(
+        "emails",   emails.stream().map(this::toMap).toList(),
+        "total",    total,
+        "pagina",   pagina,
+        "pageSize", PAGE_SIZE,
+        "temMais",  (pagina + 1) * PAGE_SIZE < total
+    ));
+}
 
     @GetMapping("/pasta/{pasta}")
     public ResponseEntity<?> listarPorPasta(
