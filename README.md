@@ -5,7 +5,6 @@ API REST desenvolvida com Spring Boot para análise inteligente de emails com fo
 A aplicação funciona como um firewall inteligente de emails, utilizando:
 
 - Heurísticas próprias de detecção
-- Integração com Safe Browsing
 - Inteligência Artificial via Groq
 - Bases OpenPhish e URLhaus
 - Login com Gmail OAuth2
@@ -115,7 +114,6 @@ Usuário → Login Gmail OAuth2
 ## APIs e Integrações
 
 - Gmail API
-- Safe Browsing API
 - Groq API
 - OpenPhish
 - URLhaus
