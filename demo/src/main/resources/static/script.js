@@ -55,19 +55,21 @@ function badgePhishing(classificacao, score) {
   if (!classificacao) return '';
   const cfg = {
     SEGURO:   { bg: '#e6f4ea', color: '#1e8e3e', icon: '✓' },
-    SUSPEITO: { bg: '#fff8e1', color: '#b06000', icon: '⚠' },
-    FRAUDE:   { bg: '#fff8e1', color: '#b06000', icon: '⚠' },
+    SUSPEITO: { bg: '#fff3e0', color: '#e65100', icon: '⚠' },
+    FRAUDE:   { bg: '#fce8e6', color: '#c5221f', icon: '✕' },
   }[classificacao] || { bg: '#f1f3f4', color: '#5f6368', icon: '?' };
   return `<span style="display:inline-flex;align-items:center;gap:4px;background:${cfg.bg};color:${cfg.color};font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;margin-left:8px;vertical-align:middle;">${cfg.icon} ${classificacao} ${score != null ? `· ${score}` : ''}</span>`;
 }
 
-/* ── BADGE CLASSIFICAÇÃO (lista — todos) ── */
+/* ── BADGE CLASSIFICAÇÃO (lista — todos os emails) ── */
 function badgePhishingLista(classificacao) {
-  if (!classificacao) return '';
+  if (!classificacao) {
+    return `<span style="display:inline-flex;align-items:center;gap:3px;background:#f1f3f4;color:#5f6368;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;margin-left:6px;vertical-align:middle;flex-shrink:0;">? Analisando</span>`;
+  }
   const cfg = {
     SEGURO:   { bg: '#e6f4ea', color: '#1e8e3e', icon: '✓', label: 'Seguro' },
-    SUSPEITO: { bg: '#fff8e1', color: '#b06000', icon: '⚠', label: 'Suspeito' },
-    FRAUDE:   { bg: '#fff8e1', color: '#b06000', icon: '⚠', label: 'Fraude' },
+    SUSPEITO: { bg: '#fff3e0', color: '#e65100', icon: '⚠', label: 'Suspeito' },
+    FRAUDE:   { bg: '#fce8e6', color: '#c5221f', icon: '✕', label: 'Fraude' },
   }[classificacao];
   if (!cfg) return '';
   return `<span style="display:inline-flex;align-items:center;gap:3px;background:${cfg.bg};color:${cfg.color};font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;margin-left:6px;vertical-align:middle;flex-shrink:0;">${cfg.icon} ${cfg.label}</span>`;
@@ -148,8 +150,8 @@ async function carregarEmails(pagina = 0) {
     temMaisEmails = data.temMais  ?? false;
     totalEmails   = data.total    ?? emails.length;
     totalNaoLidos = data.naoLidos ?? 0;
-    const naoInbox   = allEmails.filter(e => e.folder !== 'inbox');
-    let novosInbox   = emails.map(e => emailDoServidor(e, 'inbox'));
+    const naoInbox = allEmails.filter(e => e.folder !== 'inbox');
+    let novosInbox = emails.map(e => emailDoServidor(e, 'inbox'));
     novosInbox.sort((a, b) => new Date(b.dateRaw||0) - new Date(a.dateRaw||0));
     allEmails = [...novosInbox, ...naoInbox];
     renderEmails();
@@ -482,8 +484,8 @@ function openEmail(email) {
   if (email.classificacao) {
     const cfg = {
       SEGURO:   { bg:'#e6f4ea', border:'#34a853', color:'#1e8e3e', title:'Email seguro' },
-      SUSPEITO: { bg:'#fff8e1', border:'#fbbc04', color:'#b06000', title:'Email suspeito' },
-      FRAUDE:   { bg:'#fff8e1', border:'#fbbc04', color:'#b06000', title:'Possível fraude!' },
+      SUSPEITO: { bg:'#fff3e0', border:'#e65100', color:'#e65100', title:'Email suspeito' },
+      FRAUDE:   { bg:'#fce8e6', border:'#c5221f', color:'#c5221f', title:'Possível fraude!' },
     }[email.classificacao] || {};
     const motivosHtml = email.motivos.length
       ? email.motivos.map(m=>`<li style="margin:4px 0;font-size:13px;">${m}</li>`).join('')
@@ -604,21 +606,17 @@ document.querySelectorAll('.nav-item[data-filter]').forEach(item => {
     currentFilter = item.dataset.filter;
     selectedIds.clear(); closeViewer();
     if (window.innerWidth <= 768) document.getElementById('sidebar')?.classList.remove('open');
-
     apiFetch(`/api/caixa/classificacao/${currentFilter}?pagina=0`).then(async res => {
       if (!res || !res.ok) return;
       const data   = await res.json();
       const emails = data.emails || [];
       let novos    = emails.map(e => emailDoServidor(e, 'inbox'));
       novos.sort((a, b) => new Date(b.dateRaw||0) - new Date(a.dateRaw||0));
-
       paginaAtual   = data.pagina  ?? 0;
       temMaisEmails = data.temMais ?? false;
       totalEmails   = data.total   ?? novos.length;
-
       allEmails = [...novos, ...allEmails.filter(e => e.folder !== 'inbox')];
       renderEmails(); atualizarBotoesPagina();
-
       const pageInfo = document.getElementById('pageInfo');
       if (pageInfo) pageInfo.textContent = `${novos.length} de ${totalEmails}`;
     });
@@ -663,14 +661,13 @@ function applySettings() {
 }
 function shadeColor(hex,pct){ const n=parseInt(hex.replace('#',''),16); const r=Math.min(255,Math.max(0,(n>>16)+pct)); const g=Math.min(255,Math.max(0,((n>>8)&0xff)+pct)); const b=Math.min(255,Math.max(0,(n&0xff)+pct)); return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 function hexToRgba(hex,a){ const n=parseInt(hex.replace('#',''),16); return `rgba(${n>>16},${(n>>8)&0xff},${n&0xff},${a})`; }
+
 function syncSettingsUI() {
   document.getElementById('darkToggle').checked = settings.dark;
   document.querySelectorAll('.density-opt').forEach(el=>el.classList.toggle('active',el.dataset.density===settings.density));
-  document.querySelectorAll('.color-swatch').forEach(el=>el.classList.toggle('active',el.dataset.color===settings.accent));
 }
 document.getElementById('darkToggle').addEventListener('change',e=>{ settings.dark=e.target.checked; applySettings(); });
 document.querySelectorAll('.density-opt').forEach(el=>{ el.addEventListener('click',()=>{ settings.density=el.dataset.density; document.querySelectorAll('.density-opt').forEach(x=>x.classList.remove('active')); el.classList.add('active'); renderEmails(); }); });
-document.querySelectorAll('.color-swatch').forEach(el=>{ el.addEventListener('click',()=>{ settings.accent=el.dataset.color; document.querySelectorAll('.color-swatch').forEach(x=>x.classList.remove('active')); el.classList.add('active'); applySettings(); }); });
 document.getElementById('saveSettings').addEventListener('click',()=>{ applySettings(); closeSettings(); toast('Configurações salvas!','success'); });
 document.getElementById('resetSettings').addEventListener('click',()=>{ settings={dark:false,fontSize:14,density:'default',accent:'#1a73e8'}; syncSettingsUI(); applySettings(); toast('Configurações restauradas'); });
 
