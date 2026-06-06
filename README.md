@@ -16,7 +16,7 @@ Sistema inteligente de detecção de phishing em e-mails, desenvolvido com Java 
   - Verificação de URLs contra **URLHaus** (CSV atualizado) e **OpenPhish**
   - Análise heurística local (domínios suspeitos, palavras-chave, links externos)
   - Extração e validação de todos os links do corpo do e-mail
-  - Análise por **IA (Groq / LLaMA 3.3-70b)**
+  - Análise por **IA (Groq)**
   - Classificação final com score de 0 a 100
 -  Badge de classificação visível em todos os e-mails da lista
 -  Filtros por classificação na sidebar (Fraude, Suspeito, Seguro)
