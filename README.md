@@ -2,7 +2,7 @@
 
 Sistema inteligente de detecção de phishing em e-mails, desenvolvido com Java + Spring Boot. O PhishGuard conecta-se ao Gmail do usuário, analisa cada e-mail recebido com múltiplas camadas de verificação e classifica automaticamente como **SEGURO**, **SUSPEITO** ou **FRAUDE**.
 
-🔗 **Deploy:** [https://a3-74um.onrender.com](https://a3-74um.onrender.com)
+ **Deploy:** [https://a3-74um.onrender.com](https://a3-74um.onrender.com)
 
 ---
 
@@ -108,7 +108,7 @@ Acesse em: `http://localhost:8080`
 
 ---
 
-## 📡 Endpoints da API
+##  Endpoints da API
 
 Todos os endpoints protegidos exigem o header:
 ```
@@ -154,7 +154,7 @@ Authorization: Bearer <token>
 
 ---
 
-## 🗄️ Banco de Dados
+##  Banco de Dados
 
 ```
 usuarios              → usuários autenticados com tokens OAuth2
@@ -167,7 +167,7 @@ urls_phishing         → URLs maliciosas carregadas do URLHaus e OpenPhish
 
 ---
 
-## 📁 Estrutura do Projeto
+##  Estrutura do Projeto
 
 ```
 src/
@@ -187,7 +187,7 @@ src/
 
 ---
 
-## 👤 Autor
+##  Autor
 
 **Rafael da Silva Farias**  
 Universidade Anhembi Morumbi — 2026
