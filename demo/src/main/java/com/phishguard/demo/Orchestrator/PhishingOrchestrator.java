@@ -108,8 +108,8 @@ public class PhishingOrchestrator {
             score = Math.max(0, Math.min(score, 100));
             motivos.addAll(ia.getMotivos());
         }
-        String classificacao = score < 25 ? "SEGURO"
-                             : score < 55 ? "SUSPEITO"
+        String classificacao = score < 40 ? "SEGURO"
+                             : score < 80 ? "SUSPEITO"
                              : "FRAUDE";
 
         if (classificacao.equals("FRAUDE")
