@@ -1,4 +1,4 @@
-# 🛡️ PhishGuard
+#  PhishGuard
 
 Sistema inteligente de detecção de phishing em e-mails, desenvolvido com Java + Spring Boot. O PhishGuard conecta-se ao Gmail do usuário, analisa cada e-mail recebido com múltiplas camadas de verificação e classifica automaticamente como **SEGURO**, **SUSPEITO** ou **FRAUDE**.
 
@@ -6,11 +6,11 @@ Sistema inteligente de detecção de phishing em e-mails, desenvolvido com Java 
 
 ---
 
-## ✨ Funcionalidades
+##  Funcionalidades
 
-- 🔐 Login com conta Google (OAuth2 + JWT)
-- 📬 Sincronização automática com Gmail API (50 e-mails por ciclo)
-- 🔍 Pipeline de análise com 7 camadas:
+-  Login com conta Google (OAuth2 + JWT)
+-  Sincronização automática com Gmail API (50 e-mails por ciclo)
+-  Pipeline de análise com 7 camadas:
   - Whitelist de remetentes confiáveis (LinkedIn, Google, bancos, etc.)
   - Base interna de remetentes e domínios golpistas
   - Verificação de URLs contra **URLHaus** (CSV atualizado) e **OpenPhish**
@@ -18,17 +18,17 @@ Sistema inteligente de detecção de phishing em e-mails, desenvolvido com Java 
   - Extração e validação de todos os links do corpo do e-mail
   - Análise por **IA (Groq / LLaMA 3.3-70b)**
   - Classificação final com score de 0 a 100
-- 🏷️ Badge de classificação visível em todos os e-mails da lista
-- 📂 Filtros por classificação na sidebar (Fraude, Suspeito, Seguro)
-- 📄 Paginação de 20 e-mails por página
-- ⭐ Favoritos, pastas e marcação de lido/não lido
-- 🌙 Modo escuro
-- 📱 Interface responsiva (mobile e desktop)
-- ☁️ Deploy em nuvem no Render
+-  Badge de classificação visível em todos os e-mails da lista
+-  Filtros por classificação na sidebar (Fraude, Suspeito, Seguro)
+-  Paginação de 20 e-mails por página
+-  Favoritos, pastas e marcação de lido/não lido
+-  Modo escuro
+-  Interface responsiva (mobile e desktop)
+- Deploy em nuvem no Render
 
 ---
 
-## 🔎 Como funciona a análise
+## Como funciona a análise
 
 Cada e-mail passa pelo `PhishingOrchestrator`, que executa as etapas abaixo em sequência. O processo é interrompido assim que uma conclusão clara é encontrada:
 
@@ -52,7 +52,7 @@ O OpenPhish disponibiliza um feed com URLs de phishing conhecidas e verificadas.
 
 ---
 
-## 🛠️ Tecnologias
+##  Tecnologias
 
 | Camada | Tecnologia |
 |--------|-----------|
