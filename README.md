@@ -59,8 +59,8 @@ O OpenPhish disponibiliza um feed com URLs de phishing conhecidas e verificadas.
 | Backend | Java 17 + Spring Boot 3 |
 | Segurança | Spring Security + OAuth2 + JWT |
 | Banco de dados | PostgreSQL (Render) |
-| E-mail | Gmail API v1 |
-| IA | Groq API (LLaMA 3.3-70b) |
+| E-mail | Gmail API |
+| IA | Groq API |
 | URLs maliciosas | URLHaus CSV Feed + OpenPhish |
 | Frontend | HTML + CSS + JavaScript (sem frameworks) |
 | Deploy | Render (Web Service + PostgreSQL) |
@@ -119,8 +119,8 @@ Authorization: Bearer <token>
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| POST | `/auth/google` | Troca código OAuth2 por JWT da aplicação | Não |
-| GET | `/auth/me` | Retorna dados do usuário autenticado | Sim |
+| POST | `/auth/google` | Troca código OAuth2 por JWT da aplicação | 
+| GET | `/auth/me` | Retorna dados do usuário autenticado |
 
 ### Caixa de E-mails — `/api/caixa`
 
@@ -129,7 +129,7 @@ Authorization: Bearer <token>
 | POST | `/api/caixa/sincronizar` | Busca novos e-mails do Gmail, analisa e salva |
 | GET | `/api/caixa/pasta/{pasta}` | Lista e-mails por pasta com paginação |
 | GET | `/api/caixa/classificacao/{class}` | Filtra por SEGURO / SUSPEITO / FRAUDE |
-| PATCH | `/api/caixa/{id}/lido` | Marca e-mail como lido | Sim |
+| PATCH | `/api/caixa/{id}/lido` | Marca e-mail como lido |
 | PATCH | `/api/caixa/{id}/favorito` | Adiciona ou remove dos favoritos |
 | PATCH | `/api/caixa/{id}/pasta` | Move e-mail para outra pasta |
 | DELETE | `/api/caixa/{id}` | Remove e-mail do banco | 
