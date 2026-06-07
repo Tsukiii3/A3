@@ -61,7 +61,7 @@ function badgePhishing(classificacao, score) {
   return `<span style="display:inline-flex;align-items:center;gap:4px;background:${cfg.bg};color:${cfg.color};font-size:11px;font-weight:600;padding:2px 8px;border-radius:12px;margin-left:8px;vertical-align:middle;">${cfg.icon} ${classificacao} ${score != null ? `· ${score}` : ''}</span>`;
 }
 
-/* ── BADGE CLASSIFICAÇÃO (lista — todos os emails) ── */
+/* ── BADGE CLASSIFICAÇÃO (lista) ── */
 function badgePhishingLista(classificacao) {
   if (!classificacao) {
     return `<span style="display:inline-flex;align-items:center;gap:3px;background:#f1f3f4;color:#5f6368;font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;margin-left:6px;vertical-align:middle;flex-shrink:0;">? Analisando</span>`;
@@ -573,8 +573,6 @@ document.querySelector('.icon-btn[title="Próximo"]')?.addEventListener('click',
 document.querySelectorAll('.tb-btn').forEach(btn=>{
   const t = btn.textContent.trim();
   if(t==='Excluir') btn.addEventListener('click', deleteSelected);
-  if(t==='Spam')    btn.addEventListener('click', ()=>{ if(!selectedIds.size&&!openEmailId){toast('Selecione uma mensagem','warning');return;} [...selectedIds].forEach(id=>deleteEmail(id)); if(openEmailId) deleteEmail(openEmailId); toast('Marcado como spam','warning'); });
-  if(t==='Filtrar') btn.addEventListener('click', ()=>toast('Filtros em breve','info'));
 });
 
 /* ── FOLDERS ── */
