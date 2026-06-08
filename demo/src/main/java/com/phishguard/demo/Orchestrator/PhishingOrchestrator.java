@@ -41,7 +41,7 @@ public class PhishingOrchestrator {
         "anhanguera.com", "unopar.br",
         "licdn.com", "sendgrid.net", "amazonses.com",
         "mailchimp.com", "klaviyo.com", "mailgun.org",
-        "substack.com", "beehiiv.com"
+        "substack.com", "beehiiv.com", "catho.com.br", "udemymail.com" , "udemycdn.com"
     );
 
     private static final Set<String> LINK_WHITELIST = Set.of(
