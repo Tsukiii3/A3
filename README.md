@@ -189,5 +189,5 @@ src/
 
 ##  Autor
 
-**Rafael da Silva Farias**  
-Universidade Anhembi Morumbi — 2026
+**Tsukii**  
+2026
